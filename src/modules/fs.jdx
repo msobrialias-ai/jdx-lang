@@ -1,0 +1,27 @@
+export function readFile(path) {
+ return System.ReadFile(path);
+}
+
+export function writeFile(path, content) {
+ return System.WriteFile(path, content);
+}
+
+export function exists(path) {
+ return System.Exists(path);
+}
+
+export function cwd() {
+ return System.FileSystem().cwd;
+}
+
+export function home() {
+ return System.FileSystem().home;
+}
+
+export function temp() {
+ return System.FileSystem().temp;
+}
+
+export function root() {
+ return System.FileSystem().root;
+}

@@ -1,0 +1,7 @@
+export function now() {
+ return System.Clock();
+}
+
+export function now_ms() {
+ return System.Time();
+}

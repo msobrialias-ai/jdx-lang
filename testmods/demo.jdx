@@ -1,0 +1,6 @@
+let internal = 7;
+function inc(n) {
+  return n + 1;
+}
+export { internal as answer, inc };
+export default internal * 6;

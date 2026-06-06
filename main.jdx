@@ -1,0 +1,25 @@
+import multiply, { add, double } from "jdx:math";
+import * as fs from "jdx:fs";
+import { now, now_ms } from "jdx:time";
+import { Print, Sleep, Type, Buffer, Log } from "jdx:utils";
+
+Print("2 + 3 = " + add(2, 3));
+Print("4 * 5 = " + multiply(4, 5));
+Print("double(6) = " + double(6));
+Print(now());
+Print(now_ms());
+Print("Current Working Diretory: " + fs.cwd());
+Print("Home: " + fs.home());
+Print("Sleep 2 Second");
+Sleep(2000);
+Print("The Type Of 1 Is: " + Type(1));
+let buf = Buffer();
+
+buf.appendByte(65);
+buf.appendByte(66);
+buf.appendByte(67);
+
+Log(buf.toString()); // ABC
+Log(buf.get(1)); // 66
+buf.set(1, 90);
+Log(buf.toString()); // AZC

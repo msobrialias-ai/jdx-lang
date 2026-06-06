@@ -1,0 +1,75 @@
+export function Print(message) {
+ return System.Output(message);
+}
+
+export function Log(message) {
+ return System.Log(message);
+}
+
+export function Warn(message) {
+ return System.Warn(message);
+}
+
+export function Error(message) {
+ return System.Error(message);
+}
+
+export function Sleep(ms) {
+ return System.Sleep(ms);
+}
+
+export function Random() {
+ return System.Random();
+}
+
+export function Type(input) {
+ return System.Type(input);
+}
+
+export function Length(str) {
+ return System.Len(str);
+}
+
+export function SystemInfo() {
+ return System.ShowSystemInfo();
+}
+
+export function Lower(input) {
+ return System.Lower(input);
+}
+
+export function Upper(input) {
+ return System.Upper(input);
+}
+
+export function ExitSignal(signal) {
+ return System.ExitSignals(signal);
+}
+
+export function Buffer() {
+ return System.Buffer();
+}
+
+export function Regex(pattern) {
+ return System.Regex(pattern);
+}
+
+export function RegexTest(pattern, input) {
+ return System.Regex(pattern).test(input);
+}
+
+export function RegexMatch(pattern, input) {
+ return System.Regex(pattern).match(input);
+}
+
+export function RegexSearch(pattern, input) {
+ return System.Regex(pattern).search(input);
+}
+
+export function RegexReplace(pattern, input, replacement) {
+ return System.Regex(pattern).replace(input, replacement);
+}
+
+export function RegexSplit(pattern, input) {
+ return System.Regex(pattern).split(input);
+}

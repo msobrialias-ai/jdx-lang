@@ -1,0 +1,23 @@
+export function Compile(pattern) {
+ return System.Regex(pattern);
+}
+
+export function Test(pattern, input) {
+ return System.Regex(pattern).test(input);
+}
+
+export function Match(pattern, input) {
+ return System.Regex(pattern).match(input);
+}
+
+export function Search(pattern, input) {
+ return System.Regex(pattern).search(input);
+}
+
+export function Replace(pattern, input, replacement) {
+ return System.Regex(pattern).replace(input, replacement);
+}
+
+export function Split(pattern, input) {
+ return System.Regex(pattern).split(input);
+}
