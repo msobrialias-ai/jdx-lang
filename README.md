@@ -1,4 +1,6 @@
-# JDX Syntax
+# JDX Examples
+
+<img src="vscode-extension/logo.png" witdh="100" height="100" />
 
 ## Declarations
 
