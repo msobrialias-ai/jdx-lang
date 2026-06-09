@@ -1,6 +1,6 @@
 # JDX Language Tools
 
-![Logo](logo.svg)
+![Logo](logo.png)
 
 VS Code extension for the **JDX** language.
 
