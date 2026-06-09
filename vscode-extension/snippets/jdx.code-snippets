@@ -1,0 +1,83 @@
+{
+  "Function declaration": {
+    "prefix": "fname",
+    "body": [
+      "fname ${1:name}(${2:params}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Create a JDX function."
+  },
+  "Class declaration": {
+    "prefix": "class",
+    "body": [
+      "class ${1:Name} {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Create a JDX class."
+  },
+  "Let binding": {
+    "prefix": "let",
+    "body": "let ${1:name} = ${2:value};",
+    "description": "Create a mutable binding."
+  },
+  "Const binding": {
+    "prefix": "const",
+    "body": "const ${1:name} = ${2:value};",
+    "description": "Create an immutable binding."
+  },
+  "If statement": {
+    "prefix": "if",
+    "body": [
+      "if (${1:condition}) {",
+      "\t${2}",
+      "}${3:else}"
+    ],
+    "description": "Create an if block."
+  },
+  "For loop": {
+    "prefix": "for",
+    "body": [
+      "for (${1:init}; ${2:condition}; ${3:increment}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Create a for loop."
+  },
+  "While loop": {
+    "prefix": "while",
+    "body": [
+      "while (${1:condition}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Create a while loop."
+  },
+  "Try catch": {
+    "prefix": "try",
+    "body": [
+      "try {",
+      "\t${1}",
+      "} catch (${2:error}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Create a try/catch block."
+  },
+  "Import named": {
+    "prefix": "import",
+    "body": "import { ${1:name} } from \"${2:jdx:module}\";",
+    "description": "Import one or more named bindings."
+  },
+  "Export named": {
+    "prefix": "export",
+    "body": "export { ${1:local} as ${2:exported} };",
+    "description": "Export local bindings."
+  },
+  "Return": {
+    "prefix": "return",
+    "body": "return ${1:value};",
+    "description": "Return from a function."
+  }
+}

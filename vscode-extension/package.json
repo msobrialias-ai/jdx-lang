@@ -1,0 +1,84 @@
+{
+  "name": "jdx-language-tools",
+  "displayName": "JDX Language Tools",
+  "description": "Syntax highlighting, snippets, autocomplete, hover docs, and diagnostics for JDX.",
+  "version": "0.1.0",
+  "publisher": "M. Sobri Alias",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:jdx"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "jdx",
+        "aliases": [
+          "JDX",
+          "jdx"
+        ],
+        "extensions": [
+          ".jdx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "jdx",
+        "scopeName": "source.jdx",
+        "path": "./syntaxes/jdx.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "jdx",
+        "path": "./snippets/jdx.code-snippets"
+      }
+    ],
+    "configuration": {
+      "title": "JDX",
+      "properties": {
+        "jdx.linting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable built-in diagnostics for JDX files."
+        },
+        "jdx.linting.severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "hint"
+          ],
+          "default": "warning",
+          "description": "Severity used by the built-in linter."
+        },
+        "jdx.completion.showSystemMembers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer System and Develoment member completions."
+        },
+        "jdx.completion.showLocalSymbols": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer names collected from the current file."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "node ./scripts/package-vsix.js"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/msobrialias-ai/jdx-lang"
+  }
+}

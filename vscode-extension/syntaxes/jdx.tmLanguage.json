@@ -1,0 +1,111 @@
+{
+  "scopeName": "source.jdx",
+  "name": "JDX",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#functions"
+    },
+    {
+      "include": "#classes"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#identifiers"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.jdx",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.jdx",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.jdx",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.jdx"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.jdx",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.jdx"
+            }
+          ]
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.jdx",
+          "match": "\\b(?:let|const|fname|return|if|elif|else|while|for|break|continue|class|try|catch|throw|this|import|export|default|from|as)\\b"
+        },
+        {
+          "name": "constant.language.boolean.jdx",
+          "match": "\\b(?:true|false|null)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.jdx",
+      "match": "\\b(?:0|[1-9]\\d*)(?:\\.\\d+)?\\b"
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.jdx",
+          "match": "(?<=\\bfname\\s+)[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "classes": {
+      "patterns": [
+        {
+          "name": "entity.name.class.jdx",
+          "match": "(?<=\\bclass\\s+)[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "operators": {
+      "name": "keyword.operator.jdx",
+      "match": "==|!=|<=|>=|&&|\\|\\||[+\\-*/%=!<>.,:;(){}\\[\\]]"
+    },
+    "identifiers": {
+      "name": "variable.other.readwrite.jdx",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+    }
+  }
+}
