@@ -1,21 +1,3 @@
-# ============================================================
-# JDX Build System
-# - Native build
-# - Cross compile for Linux targets:
-#   * linux-x86_64
-#   * linux-i686
-#   * linux-arm64
-#   * linux-armhf
-#   * linux-riscv64
-#   * linux-loongarch64
-#
-# Notes:
-# - For x86 (32-bit) we use -m32 on a 64-bit host with multilib.
-# - For ARM/LoongArch/RISC-V we use GNU cross toolchains.
-# - Output is isolated per target and build mode:
-#   build/<target>/<build>/
-# ============================================================
-
 SHELL := /bin/bash
 
 TARGET        ?= native
@@ -28,19 +10,6 @@ ENABLE_LTO       ?= 1
 
 SRC_DIR       := src
 TEST_DIR      := tests
-OUT_DIR       := build/$(TARGET)/$(BUILD)
-
-APP_MAIN      := $(SRC_DIR)/main.cpp
-TEST_SRC      := $(TEST_DIR)/unit_tests.cpp
-
-APP_SRC       := $(shell find $(SRC_DIR) -type f -name '*.cpp' ! -name 'main.cpp' | sort)
-
-APP_OBJ       := $(patsubst %.cpp,$(OUT_DIR)/%.o,$(APP_SRC))
-APP_MAIN_OBJ  := $(patsubst %.cpp,$(OUT_DIR)/%.o,$(APP_MAIN))
-TEST_OBJ      := $(patsubst %.cpp,$(OUT_DIR)/%.o,$(TEST_SRC))
-
-APP_BIN       := $(OUT_DIR)/$(PROJECT)
-TEST_BIN      := $(OUT_DIR)/$(TEST_NAME)
 
 # ------------------------------------------------------------
 # Target aliases
@@ -90,6 +59,40 @@ ifeq ($(TARGET),loongarch64)
 TARGET := linux-loongarch64
 endif
 
+ifeq ($(TARGET),wasm)
+TARGET := wasm32
+endif
+
+# ------------------------------------------------------------
+# Paths
+# ------------------------------------------------------------
+OUT_DIR      := build/$(TARGET)/$(BUILD)
+
+APP_MAIN     := $(SRC_DIR)/main.cpp
+TEST_SRC     := $(TEST_DIR)/unit_tests.cpp
+
+APP_SRC      := $(shell find $(SRC_DIR) -type f -name '*.cpp' ! -name 'main.cpp' | sort)
+
+APP_OBJ      := $(patsubst %.cpp,$(OUT_DIR)/%.o,$(APP_SRC))
+APP_MAIN_OBJ := $(patsubst %.cpp,$(OUT_DIR)/%.o,$(APP_MAIN))
+TEST_OBJ     := $(patsubst %.cpp,$(OUT_DIR)/%.o,$(TEST_SRC))
+
+APP_BIN_NAME := $(PROJECT)
+TEST_BIN_NAME := $(TEST_NAME)
+
+ifeq ($(TARGET),wasm32)
+APP_BIN_NAME  := $(PROJECT)-wasm32.wasm
+TEST_BIN_NAME := $(TEST_NAME).wasm
+endif
+
+ifeq ($(TARGET),cf-wasm)
+APP_BIN_NAME  := $(PROJECT)-cf-wasm.wasm
+TEST_BIN_NAME := $(TEST_NAME)-cf-wasm.wasm
+endif
+
+APP_BIN      := $(OUT_DIR)/$(APP_BIN_NAME)
+TEST_BIN     := $(OUT_DIR)/$(TEST_BIN_NAME)
+
 # ------------------------------------------------------------
 # Toolchain selection
 # ------------------------------------------------------------
@@ -134,6 +137,26 @@ ifeq ($(TARGET),linux-loongarch64)
 	endif
 endif
 
+ifeq ($(TARGET),wasm32)
+	CC      := clang
+	CXX     := clang++
+	AR      := llvm-ar
+	STRIP   := llvm-strip
+
+	ARCH_FLAGS += --target=wasm32-wasi -nostartfiles
+	LDFLAGS    += --target=wasm32-wasi -Wl,--export-all -Wl,--no-entry
+endif
+
+ifeq ($(TARGET),cf-wasm)
+	CC      := clang
+	CXX     := clang++
+	AR      := llvm-ar
+	STRIP   := llvm-strip
+
+	ARCH_FLAGS += --target=wasm32-unknown-unknown
+	LDFLAGS    += --target=wasm32-unknown-unknown -Wl,--export-all -Wl,--no-entry
+endif
+
 CC      ?= $(CROSS_PREFIX)gcc
 CXX     ?= $(CROSS_PREFIX)g++
 AR      ?= $(CROSS_PREFIX)ar
@@ -164,7 +187,6 @@ CXXFLAGS  += $(COMMON_FLAGS) $(WARNINGS) $(ARCH_FLAGS)
 
 ifeq ($(BUILD),debug)
 	CXXFLAGS += -g3 -O0
-	LDFLAGS  +=
 else
 	ifeq ($(ENABLE_LTO),1)
 		CXXFLAGS += -O2 -flto
@@ -203,15 +225,15 @@ check:
 	@command -v $(STRIP) >/dev/null 2>&1 || { echo "Strip tool not found: $(STRIP)"; exit 1; }
 
 info:
-	@echo "TARGET       = $(TARGET)"
-	@echo "BUILD        = $(BUILD)"
+	@echo "TARGET        = $(TARGET)"
+	@echo "BUILD         = $(BUILD)"
 	@echo "CROSS_PREFIX  = $(CROSS_PREFIX)"
-	@echo "CXX          = $(CXX)"
-	@echo "STRIP        = $(STRIP)"
-	@echo "OUT_DIR      = $(OUT_DIR)"
-	@echo "ARCH_FLAGS   = $(ARCH_FLAGS)"
-	@echo "ENABLE_LTO   = $(ENABLE_LTO)"
-	@echo "FAST_MATH    = $(ENABLE_FAST_MATH)"
+	@echo "CXX           = $(CXX)"
+	@echo "STRIP         = $(STRIP)"
+	@echo "OUT_DIR       = $(OUT_DIR)"
+	@echo "ARCH_FLAGS    = $(ARCH_FLAGS)"
+	@echo "ENABLE_LTO    = $(ENABLE_LTO)"
+	@echo "FAST_MATH     = $(ENABLE_FAST_MATH)"
 
 help:
 	@echo "Usage:"
@@ -224,6 +246,8 @@ help:
 	@echo "  make TARGET=linux-armhf"
 	@echo "  make TARGET=linux-riscv64"
 	@echo "  make TARGET=linux-loongarch64"
+	@echo "  make TARGET=wasm"
+	@echo "  make TARGET=cf-wasm"
 	@echo "  make BUILD=debug"
 	@echo "  make ENABLE_FAST_MATH=1"
 	@echo "  make ENABLE_LTO=0"

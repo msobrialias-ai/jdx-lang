@@ -18,50 +18,146 @@ jobs:
       matrix:
         include:
           - target: linux-x86_64
+            mode: linux
             packages: build-essential make binutils tar gzip coreutils findutils
             cross_prefix: ""
             artifact_name: jdx-linux-x86_64
             archive_name: jdx-linux-x86_64
+            binary_path: build/linux-x86_64/release/jdx
 
           - target: linux-i686
+            mode: linux
             packages: build-essential make binutils g++-multilib tar gzip coreutils findutils
             cross_prefix: ""
             artifact_name: jdx-linux-i686
             archive_name: jdx-linux-i686
+            binary_path: build/linux-i686/release/jdx
 
           - target: linux-arm64
+            mode: linux
             packages: build-essential make binutils g++-aarch64-linux-gnu tar gzip coreutils findutils
             cross_prefix: aarch64-linux-gnu-
             artifact_name: jdx-linux-arm64
             archive_name: jdx-linux-arm64
+            binary_path: build/linux-arm64/release/jdx
 
           - target: linux-armhf
+            mode: linux
             packages: build-essential make binutils g++-arm-linux-gnueabihf tar gzip coreutils findutils
             cross_prefix: arm-linux-gnueabihf-
             artifact_name: jdx-linux-armhf
             archive_name: jdx-linux-armhf
+            binary_path: build/linux-armhf/release/jdx
 
           - target: linux-riscv64
+            mode: linux
             packages: build-essential make binutils g++-riscv64-linux-gnu tar gzip coreutils findutils
             cross_prefix: riscv64-linux-gnu-
             artifact_name: jdx-linux-riscv64
             archive_name: jdx-linux-riscv64
+            binary_path: build/linux-riscv64/release/jdx
+
+          - target: linux-loongarch64
+            mode: linux
+            packages: build-essential make binutils g++-loongarch64-linux-gnu tar gzip coreutils findutils
+            cross_prefix: loongarch64-linux-gnu-
+            artifact_name: jdx-linux-loongarch64
+            archive_name: jdx-linux-loongarch64
+            binary_path: build/linux-loongarch64/release/jdx
+
+          - target: wasm
+            mode: wasm
+            artifact_name: jdx-wasm32
+            archive_name: jdx-wasm32
+            binary_path: build/wasm32/release/jdx-wasm32.wasm
+
+          - target: cf-wasm
+            mode: wasm
+            artifact_name: jdx-cf-wasm
+            archive_name: jdx-cf-wasm
+            binary_path: build/cf-wasm/release/jdx-cf-wasm.wasm
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install Linux dependencies
+        if: matrix.mode == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y ${{ matrix.packages }}
 
-      - name: Build release
-        run: make -j"$(nproc)" TARGET=${{ matrix.target }} BUILD=release CROSS_PREFIX=${{ matrix.cross_prefix }}
+      - name: Install WASM dependencies
+        if: matrix.mode == 'wasm'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            make \
+            binutils \
+            tar \
+            gzip \
+            coreutils \
+            findutils \
+            clang \
+            llvm \
+            lld \
+            wget
 
-      - name: Save binary to release folder
+      - name: Install WASI SDK
+        if: matrix.target == 'wasm'
+        run: |
+          WASI_VERSION="33"
+          WASI_VERSION_FULL="33.0"
+          WASI_ARCH="x86_64"
+          WASI_OS="linux"
+
+          wget -O wasi-sdk.tar.gz \
+            "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_VERSION}/wasi-sdk-${WASI_VERSION_FULL}-${WASI_ARCH}-${WASI_OS}.tar.gz"
+
+          sudo mkdir -p /opt
+          sudo tar -C /opt -xzf wasi-sdk.tar.gz
+          sudo mv "/opt/wasi-sdk-${WASI_VERSION_FULL}-${WASI_ARCH}-${WASI_OS}" /opt/wasi-sdk
+
+      - name: Build release
+        run: |
+          if [ "${{ matrix.target }}" = "wasm" ]; then
+            make -j"$(nproc)" build \
+              TARGET=wasm \
+              BUILD=release \
+              CC=/opt/wasi-sdk/bin/clang \
+              CXX=/opt/wasi-sdk/bin/clang++ \
+              AR=/opt/wasi-sdk/bin/llvm-ar \
+              STRIP=/opt/wasi-sdk/bin/llvm-strip
+          elif [ "${{ matrix.target }}" = "cf-wasm" ]; then
+            make -j"$(nproc)" build \
+              TARGET=cf-wasm \
+              BUILD=release
+          else
+            make -j"$(nproc)" build \
+              TARGET=${{ matrix.target }} \
+              BUILD=release \
+              CROSS_PREFIX=${{ matrix.cross_prefix }}
+          fi
+
+      - name: Verify output exists
+        run: |
+          test -f "${{ matrix.binary_path }}"
+          ls -lh "${{ matrix.binary_path }}"
+
+      - name: Package binary
         run: |
           mkdir -p release
-          tar -czf release/${{ matrix.archive_name }}.tar.gz -C build/${{ matrix.target }}/release jdx
+
+          if [ "${{ matrix.mode }}" = "linux" ]; then
+            tar -czf release/${{ matrix.archive_name }}.tar.gz \
+              -C "$(dirname "${{ matrix.binary_path }}")" \
+              "$(basename "${{ matrix.binary_path }}")"
+          else
+            tar -czf release/${{ matrix.archive_name }}.tar.gz \
+              -C "$(dirname "${{ matrix.binary_path }}")" \
+              "$(basename "${{ matrix.binary_path }}")"
+          fi
+
           sha256sum release/${{ matrix.archive_name }}.tar.gz > release/${{ matrix.archive_name }}.tar.gz.sha256
 
       - name: Upload workflow artifact
