@@ -1,25 +1,32 @@
 #pragma once
+
 #include <memory>
+#include <mutex>
 #include <vector>
-#include <algorithm>
 
 namespace jdx::gc {
 
-class GarbageCollector {
+class GarbageCollector final {
 public:
+    static GarbageCollector& instance();
+
     template <typename T>
-    std::shared_ptr<T> track(std::shared_ptr<T> ptr) {
-        tracked_.push_back(ptr);
-        return ptr;
+    void track(const std::shared_ptr<T>& object) {
+        if (!object) {
+            return;
+        }
+        std::scoped_lock lock(mutex_);
+        tracked_.emplace_back(object);
     }
 
-    void sweep() {
-        tracked_.erase(std::remove_if(tracked_.begin(), tracked_.end(), [](const std::weak_ptr<void>& w) { return w.expired(); }), tracked_.end());
-    }
+    void collect() noexcept;
 
-    std::size_t trackedCount() const { return tracked_.size(); }
+    [[nodiscard]] std::size_t trackedCount() const noexcept;
 
 private:
+    GarbageCollector() = default;
+
+    mutable std::mutex mutex_;
     std::vector<std::weak_ptr<void>> tracked_;
 };
 

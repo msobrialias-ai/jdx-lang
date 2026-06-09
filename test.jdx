@@ -2,6 +2,7 @@ import multiply, { add, double } from "jdx:math";
 import * as fs from "jdx:fs";
 import { now, now_ms } from "jdx:time";
 import { Print, Sleep, Type, Buffer, Log } from "jdx:utils";
+import * as regex from "jdx:regex";
 
 Print("2 + 3 = " + add(2, 3));
 Print("4 * 5 = " + multiply(4, 5));
@@ -13,13 +14,4 @@ Print("Home: " + fs.home());
 Print("Sleep 2 Second");
 Sleep(2000);
 Print("The Type Of 1 Is: " + Type(1));
-let buf = Buffer();
-
-buf.appendByte(65);
-buf.appendByte(66);
-buf.appendByte(67);
-
-Log(buf.toString()); // ABC
-Log(buf.get(1)); // 66
-buf.set(1, 90);
-Log(buf.toString()); // AZC
+Print(regex.Test("/\d+/", "123"));

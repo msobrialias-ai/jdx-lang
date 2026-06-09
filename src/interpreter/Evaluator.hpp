@@ -1,2 +1,2 @@
 #pragma once
-// Intentionally lightweight: evaluation is implemented in Interpreter.cpp.
+// Evaluation is implemented in Interpreter.cpp.

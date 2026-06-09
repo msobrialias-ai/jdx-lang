@@ -1,7 +1,7 @@
-export function now() {
- return System.Clock();
+export fname now() {
+    return System.Clock();
 }
 
-export function now_ms() {
- return System.Time();
+export fname now_ms() {
+    return System.Time();
 }

@@ -1,13 +1,21 @@
+
 #pragma once
+
 #include <string>
 #include <vector>
+
 #include "runtime/Value.hpp"
 
-namespace jdx::interpreter { class Interpreter; }
+namespace jdx::interpreter {
+class Interpreter;
+class Environment;
+}
 
 namespace jdx::runtime {
 
 Value makeSystemObject(const std::vector<std::string>& args);
-Value makeNative(const std::string& name, std::function<Value(const std::vector<Value>&)> fn);
+Value makeDevelopmentObject();
+
+std::shared_ptr<interpreter::Environment> makeGlobalEnvironment(const std::vector<std::string>& args);
 
 } // namespace jdx::runtime

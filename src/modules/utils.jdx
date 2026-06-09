@@ -1,75 +1,71 @@
-export function Print(message) {
- return System.Output(message);
+export fname Print(message) {
+    return System.Output(message);
 }
 
-export function Log(message) {
- return System.Log(message);
+export fname Log(message) {
+    return System.Log(message);
 }
 
-export function Warn(message) {
- return System.Warn(message);
+export fname Warn(message) {
+    return System.Warn(message);
 }
 
-export function Error(message) {
- return System.Error(message);
+export fname Error(message) {
+    return System.Error(message);
 }
 
-export function Sleep(ms) {
- return System.Sleep(ms);
+export fname Sleep(ms) {
+    return System.Sleep(ms);
 }
 
-export function Random() {
- return System.Random();
+export fname Random() {
+    return System.Random();
 }
 
-export function Type(input) {
- return System.Type(input);
+export fname Type(input) {
+    return System.Type(input);
 }
 
-export function Length(str) {
- return System.Len(str);
+export fname Length(str) {
+    return System.Len(str);
 }
 
-export function SystemInfo() {
- return System.ShowSystemInfo();
+export fname SystemInfo() {
+    return System.ShowSystemInfo();
 }
 
-export function Lower(input) {
- return System.Lower(input);
+export fname Lower(input) {
+    return System.Lower(input);
 }
 
-export function Upper(input) {
- return System.Upper(input);
+export fname Upper(input) {
+    return System.Upper(input);
 }
 
-export function ExitSignal(signal) {
- return System.ExitSignals(signal);
+export fname Buffer() {
+    return System.FileSystem();
 }
 
-export function Buffer() {
- return System.Buffer();
+export fname Regex(pattern) {
+    return System.JGex(pattern);
 }
 
-export function Regex(pattern) {
- return System.Regex(pattern);
+export fname RegexTest(pattern, input) {
+    return System.JGex(pattern).test(input);
 }
 
-export function RegexTest(pattern, input) {
- return System.Regex(pattern).test(input);
+export fname RegexMatch(pattern, input) {
+    return System.JGex(pattern).match(input);
 }
 
-export function RegexMatch(pattern, input) {
- return System.Regex(pattern).match(input);
+export fname RegexSearch(pattern, input) {
+    return System.JGex(pattern).search(input);
 }
 
-export function RegexSearch(pattern, input) {
- return System.Regex(pattern).search(input);
+export fname RegexReplace(pattern, input, replacement) {
+    return System.JGex(pattern).replace(input, replacement);
 }
 
-export function RegexReplace(pattern, input, replacement) {
- return System.Regex(pattern).replace(input, replacement);
-}
-
-export function RegexSplit(pattern, input) {
- return System.Regex(pattern).split(input);
+export fname RegexSplit(pattern, input) {
+    return System.JGex(pattern).split(input);
 }

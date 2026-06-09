@@ -1,0 +1,13 @@
+export fname Assert(condition, message) {
+    if (condition) {
+        return true;
+    }
+    return System.Error(message);
+}
+
+export fname Equal(expected, actual, message) {
+    if (expected == actual) {
+        return true;
+    }
+    return System.Error(message);
+}

@@ -1,8 +1,10 @@
 #pragma once
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "lexer/Lexer.hpp"
 
 namespace jdx::ast {
@@ -29,6 +31,10 @@ struct LiteralExpr final : Expr {
 struct VariableExpr final : Expr {
     std::string name;
     VariableExpr(lexer::Token t, std::string n) : Expr(t), name(std::move(n)) {}
+};
+
+struct ThisExpr final : Expr {
+    using Expr::Expr;
 };
 
 struct AssignExpr final : Expr {
@@ -59,7 +65,8 @@ struct CallExpr final : Expr {
     ExprPtr callee;
     lexer::Token paren;
     std::vector<ExprPtr> arguments;
-    CallExpr(ExprPtr c, lexer::Token p, std::vector<ExprPtr> a) : Expr(p), callee(std::move(c)), paren(std::move(p)), arguments(std::move(a)) {}
+    CallExpr(ExprPtr c, lexer::Token p, std::vector<ExprPtr> a)
+        : Expr(p), callee(std::move(c)), paren(std::move(p)), arguments(std::move(a)) {}
 };
 
 struct GetExpr final : Expr {
@@ -72,12 +79,8 @@ struct SetExpr final : Expr {
     ExprPtr object;
     std::string name;
     ExprPtr value;
-    SetExpr(ExprPtr o, lexer::Token t, std::string n, ExprPtr v) : Expr(t), object(std::move(o)), name(std::move(n)), value(std::move(v)) {}
-};
-
-struct ImportExpr final : Expr {
-    ExprPtr path;
-    ImportExpr(lexer::Token t, ExprPtr p) : Expr(t), path(std::move(p)) {}
+    SetExpr(ExprPtr o, lexer::Token t, std::string n, ExprPtr v)
+        : Expr(t), object(std::move(o)), name(std::move(n)), value(std::move(v)) {}
 };
 
 struct ImportBinding {
@@ -106,7 +109,18 @@ struct VarStmt final : Stmt {
     bool isExported {false};
     std::string name;
     ExprPtr initializer;
-    VarStmt(lexer::Token t, bool c, bool e, std::string n, ExprPtr i) : Stmt(t), isConst(c), isExported(e), name(std::move(n)), initializer(std::move(i)) {}
+    VarStmt(lexer::Token t, bool c, bool e, std::string n, ExprPtr i)
+        : Stmt(t), isConst(c), isExported(e), name(std::move(n)), initializer(std::move(i)) {}
+};
+
+struct FnStmt final : Stmt {
+    bool isExported {false};
+    bool isDefaultExport {false};
+    std::string name;
+    std::vector<std::string> params;
+    BlockPtr body;
+    FnStmt(lexer::Token t, bool e, bool d, std::string n, std::vector<std::string> p, BlockPtr b)
+        : Stmt(t), isExported(e), isDefaultExport(d), name(std::move(n)), params(std::move(p)), body(std::move(b)) {}
 };
 
 struct ReturnStmt final : Stmt {
@@ -114,15 +128,26 @@ struct ReturnStmt final : Stmt {
     ReturnStmt(lexer::Token t, ExprPtr v) : Stmt(t), value(std::move(v)) {}
 };
 
-struct BreakStmt final : Stmt { using Stmt::Stmt; };
-struct ContinueStmt final : Stmt { using Stmt::Stmt; };
+struct ThrowStmt final : Stmt {
+    ExprPtr value;
+    ThrowStmt(lexer::Token t, ExprPtr v) : Stmt(t), value(std::move(v)) {}
+};
+
+struct BreakStmt final : Stmt {
+    using Stmt::Stmt;
+};
+
+struct ContinueStmt final : Stmt {
+    using Stmt::Stmt;
+};
 
 struct IfStmt final : Stmt {
     ExprPtr condition;
     StmtPtr thenBranch;
     std::vector<std::pair<ExprPtr, StmtPtr>> elseIfBranches;
     StmtPtr elseBranch;
-    IfStmt(lexer::Token t, ExprPtr c, StmtPtr thenB) : Stmt(t), condition(std::move(c)), thenBranch(std::move(thenB)) {}
+    IfStmt(lexer::Token t, ExprPtr c, StmtPtr thenB)
+        : Stmt(t), condition(std::move(c)), thenBranch(std::move(thenB)) {}
 };
 
 struct WhileStmt final : Stmt {
@@ -140,19 +165,26 @@ struct ForStmt final : Stmt {
         : Stmt(t), initializer(std::move(i)), condition(std::move(c)), increment(std::move(inc)), body(std::move(b)) {}
 };
 
+struct TryCatchStmt final : Stmt {
+    StmtPtr tryBlock;
+    std::string catchName;
+    StmtPtr catchBlock;
+    TryCatchStmt(lexer::Token t, StmtPtr tr, std::string name, StmtPtr ct)
+        : Stmt(t), tryBlock(std::move(tr)), catchName(std::move(name)), catchBlock(std::move(ct)) {}
+};
+
 struct BlockStmt final : Stmt {
     std::vector<StmtPtr> statements;
     explicit BlockStmt(lexer::Token t) : Stmt(t) {}
 };
 
-struct FunctionStmt final : Stmt {
+struct ClassStmt final : Stmt {
     std::string name;
-    std::vector<std::string> params;
-    BlockPtr body;
+    std::vector<StmtPtr> body;
     bool isExported {false};
     bool isDefaultExport {false};
-    FunctionStmt(lexer::Token t, std::string n, std::vector<std::string> p, BlockPtr b, bool e, bool d)
-        : Stmt(t), name(std::move(n)), params(std::move(p)), body(std::move(b)), isExported(e), isDefaultExport(d) {}
+    ClassStmt(lexer::Token t, std::string n, std::vector<StmtPtr> b, bool e, bool d)
+        : Stmt(t), name(std::move(n)), body(std::move(b)), isExported(e), isDefaultExport(d) {}
 };
 
 struct ImportStmt final : Stmt {
@@ -177,8 +209,7 @@ struct ImportStmt final : Stmt {
 
 struct ExportListStmt final : Stmt {
     std::vector<ExportBinding> bindings;
-    explicit ExportListStmt(lexer::Token t, std::vector<ExportBinding> b)
-        : Stmt(t), bindings(std::move(b)) {}
+    explicit ExportListStmt(lexer::Token t, std::vector<ExportBinding> b) : Stmt(t), bindings(std::move(b)) {}
 };
 
 struct ExportDefaultStmt final : Stmt {

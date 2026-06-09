@@ -1,10 +1,15 @@
 #include "interpreter/Environment.hpp"
 
+#include <utility>
+
 namespace jdx::interpreter {
 
 Environment::Environment(std::shared_ptr<Environment> parent) : parent_(std::move(parent)) {}
 
-void Environment::define(const std::string& name, const runtime::Value& value, bool isConst, bool isExported) {
+void Environment::define(const std::string& name,
+                         const runtime::Value& value,
+                         bool isConst,
+                         bool isExported) {
     values_[name] = Binding{value, isConst, isExported};
     if (isExported) {
         exports_[name] = name;
@@ -14,7 +19,9 @@ void Environment::define(const std::string& name, const runtime::Value& value, b
 bool Environment::assign(const std::string& name, const runtime::Value& value) {
     auto it = values_.find(name);
     if (it != values_.end()) {
-        if (it->second.isConst) return false;
+        if (it->second.isConst) {
+            return false;
+        }
         it->second.value = value;
         return true;
     }
@@ -32,17 +39,23 @@ bool Environment::get(const std::string& name, runtime::Value& out) const {
 
 bool Environment::getLocal(const std::string& name, runtime::Value& out) const {
     auto it = values_.find(name);
-    if (it == values_.end()) return false;
+    if (it == values_.end()) {
+        return false;
+    }
     out = it->second.value;
     return true;
 }
 
-bool Environment::existsLocal(const std::string& name) const { return values_.find(name) != values_.end(); }
+bool Environment::existsLocal(const std::string& name) const {
+    return values_.find(name) != values_.end();
+}
 
 std::vector<std::string> Environment::localNames() const {
     std::vector<std::string> out;
     out.reserve(values_.size());
-    for (const auto& [k, _] : values_) out.push_back(k);
+    for (const auto& entry : values_) {
+        out.push_back(entry.first);
+    }
     return out;
 }
 

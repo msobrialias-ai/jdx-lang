@@ -1,9 +1,11 @@
 #pragma once
+
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "runtime/Value.hpp"
 
 namespace jdx::interpreter {
@@ -16,6 +18,7 @@ public:
                 const runtime::Value& value,
                 bool isConst = false,
                 bool isExported = false);
+
     bool assign(const std::string& name, const runtime::Value& value);
     bool get(const std::string& name, runtime::Value& out) const;
     bool getLocal(const std::string& name, runtime::Value& out) const;
@@ -30,6 +33,7 @@ public:
     const std::unordered_map<std::string, std::string>& exports() const { return exports_; }
 
     std::shared_ptr<Environment> parent() const { return parent_; }
+
 private:
     struct Binding {
         runtime::Value value;

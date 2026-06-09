@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstddef>
 #include <string>
 #include <unordered_map>
@@ -11,8 +12,10 @@ enum class TokenType {
     Identifier,
     Number,
     String,
+
     Let,
     Const,
+    FName,
     Return,
     If,
     Elif,
@@ -21,17 +24,21 @@ enum class TokenType {
     For,
     Break,
     Continue,
-    Fname,
+    Class,
+    Try,
+    Catch,
+    Throw,
+    This,
     Import,
     Export,
-    NamedExport,
+    Default,
     From,
     As,
-    Default,
+
     True,
     False,
     Null,
-    System,
+
     Plus,
     Minus,
     Star,
@@ -45,6 +52,8 @@ enum class TokenType {
     LessEqual,
     Greater,
     GreaterEqual,
+    AndAnd,
+    OrOr,
     Dot,
     Comma,
     Colon,
@@ -67,29 +76,30 @@ class Lexer {
 public:
     Lexer(std::string filename, std::string source);
     std::vector<Token> tokenize();
-    const std::string& source() const { return source_; }
+
 private:
-    char peek() const;
-    char peekNext() const;
+    [[nodiscard]] bool isAtEnd() const;
+    [[nodiscard]] char peek() const;
+    [[nodiscard]] char peekNext() const;
     char advance();
     bool match(char expected);
-    bool isAtEnd() const;
-    void addToken(TokenType type, const std::string& lexeme = {});
     void skipWhitespaceAndComments();
-    void stringLiteral(char quote);
-    void number();
-    void identifier();
+    void addToken(TokenType type, const std::string& lexeme = {});
+    void scanString(char quote);
+    void scanNumber();
+    void scanIdentifier();
 
     std::string filename_;
     std::string source_;
     std::vector<Token> tokens_;
+    std::unordered_map<std::string, TokenType> keywords_;
+
     std::size_t start_ {0};
     std::size_t current_ {0};
     std::size_t line_ {1};
     std::size_t column_ {1};
     std::size_t tokenLine_ {1};
     std::size_t tokenColumn_ {1};
-    std::unordered_map<std::string, TokenType> keywords_;
 };
 
 } // namespace jdx::lexer

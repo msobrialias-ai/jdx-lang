@@ -1,11 +1,11 @@
-export function add(a, b) {
- return a + b;
+export fname add(a, b) {
+    return a + b;
 }
 
-export function double(n) {
- return n * 2;
+export fname double(n) {
+    return n * 2;
 }
 
-export default function multiply(a, b) {
- return a * b;
+export default fname multiply(a, b) {
+    return a * b;
 }

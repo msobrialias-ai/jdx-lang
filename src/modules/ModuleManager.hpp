@@ -1,16 +1,18 @@
+
 #pragma once
+
 #include <string>
-#include <unordered_map>
-#include <optional>
 
 namespace jdx::modules {
 
-class ModuleManager {
+class ModuleManager final {
 public:
-    ModuleManager(std::string projectRoot = ".");
-    std::string resolveModule(const std::string& specifier, const std::string& currentFile) const;
-    std::string readModuleSource(const std::string& resolvedPath) const;
-    bool exists(const std::string& path) const;
+    explicit ModuleManager(std::string projectRoot = ".");
+
+    [[nodiscard]] std::string resolveModule(const std::string& specifier, const std::string& currentFile) const;
+    [[nodiscard]] std::string readModuleSource(const std::string& resolvedPath) const;
+    [[nodiscard]] bool exists(const std::string& path) const;
+
 private:
     std::string projectRoot_;
 };

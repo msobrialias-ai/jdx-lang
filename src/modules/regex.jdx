@@ -1,23 +1,23 @@
-export function Compile(pattern) {
- return System.Regex(pattern);
+export fname Compile(pattern) {
+    return System.JGex(pattern);
 }
 
-export function Test(pattern, input) {
- return System.Regex(pattern).test(input);
+export fname Test(pattern, input) {
+    return System.JGex(pattern).test(input);
 }
 
-export function Match(pattern, input) {
- return System.Regex(pattern).match(input);
+export fname Match(pattern, input) {
+    return System.JGex(pattern).match(input);
 }
 
-export function Search(pattern, input) {
- return System.Regex(pattern).search(input);
+export fname Search(pattern, input) {
+    return System.JGex(pattern).search(input);
 }
 
-export function Replace(pattern, input, replacement) {
- return System.Regex(pattern).replace(input, replacement);
+export fname Replace(pattern, input, replacement) {
+    return System.JGex(pattern).replace(input, replacement);
 }
 
-export function Split(pattern, input) {
- return System.Regex(pattern).split(input);
+export fname Split(pattern, input) {
+    return System.JGex(pattern).split(input);
 }
