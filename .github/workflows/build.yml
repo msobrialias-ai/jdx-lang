@@ -22,21 +22,25 @@ jobs:
             cross_prefix: ""
             artifact_name: jdx-linux-x86_64
             archive_name: jdx-linux-x86_64
+
           - target: linux-i686
             packages: build-essential make binutils g++-multilib tar gzip coreutils findutils
             cross_prefix: ""
             artifact_name: jdx-linux-i686
             archive_name: jdx-linux-i686
+
           - target: linux-arm64
             packages: build-essential make binutils g++-aarch64-linux-gnu tar gzip coreutils findutils
             cross_prefix: aarch64-linux-gnu-
             artifact_name: jdx-linux-arm64
             archive_name: jdx-linux-arm64
+
           - target: linux-armhf
             packages: build-essential make binutils g++-arm-linux-gnueabihf tar gzip coreutils findutils
             cross_prefix: arm-linux-gnueabihf-
             artifact_name: jdx-linux-armhf
             archive_name: jdx-linux-armhf
+
           - target: linux-riscv64
             packages: build-essential make binutils g++-riscv64-linux-gnu tar gzip coreutils findutils
             cross_prefix: riscv64-linux-gnu-
@@ -44,22 +48,17 @@ jobs:
             archive_name: jdx-linux-riscv64
 
     steps:
-      - name: Install git
-        run: |
-          apt-get update
-          apt-get install -y git
-
       - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          apt-get update
-          apt-get install -y ${{ matrix.packages }}
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.packages }}
 
       - name: Build release
         run: make -j"$(nproc)" TARGET=${{ matrix.target }} BUILD=release CROSS_PREFIX=${{ matrix.cross_prefix }}
 
-      - name: Saving binary to release folder
+      - name: Save binary to release folder
         run: |
           mkdir -p release
           tar -czf release/${{ matrix.archive_name }}.tar.gz -C build/${{ matrix.target }}/release jdx
@@ -74,17 +73,11 @@ jobs:
   publish:
     name: Publish Binary To GitHub Release Tags
     runs-on: ubuntu-latest
-    
     needs: build
     permissions:
       contents: write
 
     steps:
-      - name: Install git
-        run: |
-          apt-get update
-          apt-get install -y git
-
       - name: Download artifacts
         uses: actions/download-artifact@v5
         with:
