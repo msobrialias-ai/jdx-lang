@@ -56,8 +56,6 @@ std::string getEnvOr(const char* name, const std::string& fallback) {
 }
 
 std::string platformString() {
-#if defined(_WIN32)
-    return "Windows";
 #elif defined(__APPLE__)
     return "macOS";
 #elif defined(__linux__)
@@ -78,6 +76,18 @@ std::string archString() {
     return "ARM64";
 #elif defined(__arm__) || defined(_M_ARM)
     return "ARM";
+#elif defined(__loongarch64) || defined(__loongarch_lp64)
+    return "LoongArch64";
+#elif defined(__riscv) && (__riscv_xlen == 64)
+    return "RISC-V64";
+#elif defined(__riscv) && (__riscv_xlen == 32)
+    return "RISC-V32";
+#elif defined(__powerpc64__)
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        return "PowerPC64LE";
+    #else
+        return "PowerPC64";
+    #endif
 #else
     return "Unknown";
 #endif
@@ -88,8 +98,6 @@ std::string compilerString() {
     return std::string("Clang ") + __clang_version__;
 #elif defined(__GNUC__)
     return std::string("GCC ") + __VERSION__;
-#elif defined(_MSC_VER)
-    return "MSVC";
 #else
     return "Unknown";
 #endif
@@ -104,12 +112,7 @@ std::string endianString() {
 std::string formatTimePoint(const std::chrono::system_clock::time_point& point) {
     const std::time_t raw = std::chrono::system_clock::to_time_t(point);
     std::tm tm{};
-
-#if defined(_WIN32)
-    gmtime_s(&tm, &raw);
-#else
-    gmtime_r(&raw, &tm);
-#endif
+    gmtime_r(&raw, &tm);7
 
     std::ostringstream out;
     out << std::put_time(&tm, "%Y-%m-%d %H:%M:%S UTC");
@@ -117,19 +120,11 @@ std::string formatTimePoint(const std::chrono::system_clock::time_point& point) 
 }
 
 std::string homeDirectory() {
-#if defined(_WIN32)
-    return getEnvOr("USERPROFILE", ".");
-#else
     return getEnvOr("HOME", ".");
-#endif
 }
 
 std::string rootDirectory() {
-#if defined(_WIN32)
-    return std::filesystem::current_path().root_name().string();
-#else
     return "/";
-#endif
 }
 
 std::string tempDirectory() {
@@ -1585,6 +1580,16 @@ static Value makeServerNamespace() {
     return Value(server);
 }
 
+static void beepTone(int freq, int durationMs) {
+    std::cout << '\a' << std::flush;
+
+    if (durationMs > 0) {
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(durationMs)
+        );
+    }
+}
+
 Value makeSystemObject(const std::vector<std::string>& args) {
     auto system = std::make_shared<Object>("System");
 
@@ -1791,6 +1796,38 @@ Value makeSystemObject(const std::vector<std::string>& args) {
                 return makeErrorResult(error.what());
             }
         }));
+    
+    system->properties.emplace("Beep", makeNative("System.Beep", [](interpreter::Interpreter&,
+           const std::vector<Value>& args) -> Value {
+
+            int freq = 750;
+            int duration = 300;
+
+            if (!args.empty()) {
+                freq = static_cast<int>(args[0].asDouble());
+            }
+
+            if (args.size() >= 2) {
+                duration = static_cast<int>(args[1].asDouble());
+            }
+
+            if (freq < 37) {
+                freq = 37;
+            }
+
+            if (freq > 32767) {
+                freq = 32767;
+            }
+
+            if (duration < 1) {
+                duration = 1;
+            }
+
+            beepTone(freq, duration);
+
+            return makeNull();
+        }
+    ));
 
     return Value(system);
 }

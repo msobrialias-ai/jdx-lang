@@ -3,6 +3,12 @@ import * as fs from "jdx:fs";
 import { now, now_ms } from "jdx:time";
 import { Print, Sleep, Type, Buffer, Log } from "jdx:utils";
 import * as regex from "jdx:regex";
+import { Listen, Accept, ReadAll, Write, Text, HTTP_OK } from "jdx:http";
+
+let server = Listen(8080, 16);
+let client = Accept(server);
+let raw = ReadAll(client);
+let reply = Text(HTTP_OK, "Hello from JDX HTTP");
 
 Print("2 + 3 = " + add(2, 3));
 Print("4 * 5 = " + multiply(4, 5));
@@ -15,3 +21,21 @@ Print("Sleep 2 Second");
 Sleep(2000);
 Print("The Type Of 1 Is: " + Type(1));
 Print(regex.Test("/\d+/", "123"));
+
+Print(raw);
+Write(client, reply);
+client.close();
+server.close();
+
+let fromBalance = 10000
+let toBalance = 5000
+let amount = 1500
+
+if (fromBalance >= amount) {
+  fromBalance = fromBalance - amount
+  toBalance = toBalance + amount
+
+  System.Output("Transfer Success")
+  System.Output("From:", fromBalance)
+  System.Output("To:", toBalance)
+}

@@ -56,6 +56,14 @@ jobs:
             artifact_name: jdx-linux-riscv64
             archive_name: jdx-linux-riscv64
             binary_path: build/linux-riscv64/release/jdx
+            
+          - target: linux-riscv32
+            mode: linux
+            packages: build-essential make binutils g++-riscv32-linux-gnu tar gzip coreutils findutils
+            cross_prefix: riscv32-linux-gnu-
+            artifact_name: jdx-linux-riscv32
+            archive_name: jdx-linux-riscv32
+            binary_path: build/linux-riscv32/release/jdx
 
           - target: linux-loongarch64
             mode: linux
@@ -64,6 +72,22 @@ jobs:
             artifact_name: jdx-linux-loongarch64
             archive_name: jdx-linux-loongarch64
             binary_path: build/linux-loongarch64/release/jdx
+            
+          - target: linux-powerpc64
+            mode: linux
+            packages: build-essential make binutils g++-powerpc64-linux-gnu tar gzip coreutils findutils
+            cross_prefix: powerpc64-linux-gnu-
+            artifact_name: jdx-linux-powerpc64
+            archive_name: jdx-linux-powerpc64
+            binary_path: build/linux-powepc64/release/jdx
+            
+          - target: linux-powerpc64-le
+            mode: linux
+            packages: build-essential make binutils g++-powerpc64le-linux-gnu tar gzip coreutils findutils
+            cross_prefix: powerpc64le-linux-gnu-
+            artifact_name: jdx-linux-powerpc64le
+            archive_name: jdx-linux-powerpc64le
+            binary_path: build/linux-powerpc64le/release/jdx
 
           - target: wasm
             mode: wasm
@@ -76,7 +100,7 @@ jobs:
             artifact_name: jdx-cf-wasm
             archive_name: jdx-cf-wasm
             binary_path: build/cf-wasm/release/jdx-cf-wasm.wasm
-
+            
     steps:
       - uses: actions/checkout@v4
 

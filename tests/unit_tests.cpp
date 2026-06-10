@@ -166,15 +166,9 @@ int main() {
             const auto logDecorated = jdx::utils::Logger::decorate(jdx::utils::LogLevel::Log, "hello");
             const auto warnDecorated = jdx::utils::Logger::decorate(jdx::utils::LogLevel::Warn, "hello");
             const auto errorDecorated = jdx::utils::Logger::decorate(jdx::utils::LogLevel::Error, "hello");
-#if defined(_WIN32)
-            require(logDecorated.find("[log] hello") != std::string::npos, "Windows log decoration failed.");
-            require(warnDecorated.find("[warn] hello") != std::string::npos, "Windows warn decoration failed.");
-            require(errorDecorated.find("[error] hello") != std::string::npos, "Windows error decoration failed.");
-#else
             require(logDecorated.find("\x1b[32m") != std::string::npos, "Log color missing.");
             require(warnDecorated.find("\x1b[33m") != std::string::npos, "Warn color missing.");
             require(errorDecorated.find("\x1b[31m") != std::string::npos, "Error color missing.");
-#endif
         }
 
         {

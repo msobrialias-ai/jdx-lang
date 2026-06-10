@@ -55,12 +55,24 @@ ifeq ($(TARGET),riscv64)
 TARGET := linux-riscv64
 endif
 
+ifeq ($(TARGET),riscv32)
+TARGET := linux-riscv32
+endif
+
 ifeq ($(TARGET),loongarch64)
 TARGET := linux-loongarch64
 endif
 
 ifeq ($(TARGET),wasm)
 TARGET := wasm32
+endif
+
+ifeq ($(TARGET),powerpc64)
+TARGET := linux-powerpc64
+endif
+
+ifeq ($(TARGET),powerpc64le)
+TARGET := linux-powerpc64-le
 endif
 
 # ------------------------------------------------------------
@@ -131,10 +143,28 @@ ifeq ($(TARGET),linux-riscv64)
 	endif
 endif
 
+ifeq ($(TARGET),linux-riscv32)
+  ifeq ($(CROSS_PREFIX),)
+    CROSS_PREFIX := riscv32-linux-gnu-
+  endif
+endif
+
 ifeq ($(TARGET),linux-loongarch64)
 	ifeq ($(CROSS_PREFIX),)
 		CROSS_PREFIX := loongarch64-linux-gnu-
 	endif
+endif
+
+ifeq ($(TARGET),linux-powerpc64)
+  ifeq ($(CROSS_PREFIX),)
+    CROSS_PREFIX := powerpc64-linux-gnu-
+  endif
+endif
+
+ifeq ($(TARGET),linux-powerpc64-le)
+  ifeq ($(CROSS_PREFIX),)
+    CROSS_PREFIX := powerpc64le-linux-gnu-
+  endif
 endif
 
 ifeq ($(TARGET),wasm32)
@@ -245,6 +275,7 @@ help:
 	@echo "  make TARGET=linux-arm64"
 	@echo "  make TARGET=linux-armhf"
 	@echo "  make TARGET=linux-riscv64"
+	@echo "  make TARGET=linux-riscv32"
 	@echo "  make TARGET=linux-loongarch64"
 	@echo "  make TARGET=wasm"
 	@echo "  make TARGET=cf-wasm"
@@ -280,7 +311,7 @@ $(OUT_DIR)/%.o: %.cpp
 # Cleanup
 # ------------------------------------------------------------
 clean:
-	rm -rf build
+	rm -rf 
 
 distclean: clean
 

@@ -1,2 +1,3 @@
-*.d
 *.o
+*.d
+unit_test

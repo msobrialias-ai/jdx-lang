@@ -1,6 +1,6 @@
 # JDX Language Tools
 
-![Logo](logo.png)
+<img src="logo.png" width="200px" height="200px" />
 
 VS Code extension for the **JDX** language.
 

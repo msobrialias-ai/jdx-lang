@@ -1,0 +1,224 @@
+export const HTTP_CONTINUE = 100;
+export const HTTP_SWITCHING_PROTOCOLS = 101;
+
+export const HTTP_OK = 200;
+export const HTTP_CREATED = 201;
+export const HTTP_ACCEPTED = 202;
+export const HTTP_NO_CONTENT = 204;
+
+export const HTTP_MOVED_PERMANENTLY = 301;
+export const HTTP_FOUND = 302;
+export const HTTP_NOT_MODIFIED = 304;
+
+export const HTTP_BAD_REQUEST = 400;
+export const HTTP_UNAUTHORIZED = 401;
+export const HTTP_FORBIDDEN = 403;
+export const HTTP_NOT_FOUND = 404;
+export const HTTP_METHOD_NOT_ALLOWED = 405;
+export const HTTP_REQUEST_TIMEOUT = 408;
+export const HTTP_CONFLICT = 409;
+export const HTTP_UNSUPPORTED_MEDIA_TYPE = 415;
+export const HTTP_IM_A_TEAPOT = 418;
+
+export const HTTP_INTERNAL_SERVER_ERROR = 500;
+export const HTTP_NOT_IMPLEMENTED = 501;
+export const HTTP_BAD_GATEWAY = 502;
+export const HTTP_SERVICE_UNAVAILABLE = 503;
+
+fname StatusText(code) {
+    if (code == 100) {
+        return "Continue";
+    } elif (code == 101) {
+        return "Switching Protocols";
+    } elif (code == 200) {
+        return "OK";
+    } elif (code == 201) {
+        return "Created";
+    } elif (code == 202) {
+        return "Accepted";
+    } elif (code == 204) {
+        return "No Content";
+    } elif (code == 301) {
+        return "Moved Permanently";
+    } elif (code == 302) {
+        return "Found";
+    } elif (code == 304) {
+        return "Not Modified";
+    } elif (code == 400) {
+        return "Bad Request";
+    } elif (code == 401) {
+        return "Unauthorized";
+    } elif (code == 403) {
+        return "Forbidden";
+    } elif (code == 404) {
+        return "Not Found";
+    } elif (code == 405) {
+        return "Method Not Allowed";
+    } elif (code == 408) {
+        return "Request Timeout";
+    } elif (code == 409) {
+        return "Conflict";
+    } elif (code == 415) {
+        return "Unsupported Media Type";
+    } elif (code == 418) {
+        return "I'm a teapot";
+    } elif (code == 500) {
+        return "Internal Server Error";
+    } elif (code == 501) {
+        return "Not Implemented";
+    } elif (code == 502) {
+        return "Bad Gateway";
+    } elif (code == 503) {
+        return "Service Unavailable";
+    }
+
+    return "OK";
+}
+
+fname Connect(host, port) {
+    return System.Server.Connect(host, port);
+}
+
+fname Listen(port, backlog) {
+    return System.Server.Listen(port, backlog);
+}
+
+fname Accept(listener) {
+    return listener.accept();
+}
+
+fname Close(socket) {
+    return socket.close();
+}
+
+fname Write(socket, data) {
+    return socket.send(data);
+}
+
+fname Read(socket) {
+    return socket.recv(65536);
+}
+
+fname ReadAll(socket) {
+    let output = "";
+
+    while (true) {
+        let chunk = socket.recv(4096);
+
+        if (chunk == "") {
+            break;
+        }
+
+        output = output + chunk;
+
+        if (System.Len(chunk) < 4096) {
+            break;
+        }
+    }
+
+    return output;
+}
+
+fname Response(statusCode, contentType, body) {
+    return System.Server.ResponseHeader(statusCode, contentType, body);
+}
+
+fname ResponseWithHeaders(statusCode, contentType, body, headers) {
+    return System.Server.ResponseHeader(statusCode, contentType, body, headers);
+}
+
+fname Text(statusCode, body) {
+    return System.Server.ResponseHeader(
+        statusCode,
+        "text/plain; charset=utf-8",
+        body
+    );
+}
+
+fname TextWithHeaders(statusCode, body, headers) {
+    return System.Server.ResponseHeader(
+        statusCode,
+        "text/plain; charset=utf-8",
+        body,
+        headers
+    );
+}
+
+fname Json(statusCode, value) {
+    return System.Server.ResponseHeader(
+        statusCode,
+        "application/json; charset=utf-8",
+        System.Server.JsonStringify(value)
+    );
+}
+
+fname JsonWithHeaders(statusCode, value, headers) {
+    return System.Server.ResponseHeader(
+        statusCode,
+        "application/json; charset=utf-8",
+        System.Server.JsonStringify(value),
+        headers
+    );
+}
+
+fname ParseJson(text) {
+    return System.Server.JsonParse(text);
+}
+
+fname StringifyJson(value) {
+    return System.Server.JsonStringify(value);
+}
+
+fname Resolver(host) {
+    return System.Server.Resolver(host);
+}
+
+fname SocketError() {
+    return System.SocketError();
+}
+
+fname BuildRequest(method, host, path, body) {
+    let request = "";
+    let bodyLength = "" + System.Len(body);
+
+    request = request + method + " " + path + " HTTP/1.1\r\n";
+    request = request + "Host: " + host + "\r\n";
+    request = request + "User-Agent: JDX/1.0\r\n";
+    request = request + "Connection: close\r\n";
+    request = request + "Content-Type: text/plain; charset=utf-8\r\n";
+    request = request + "Content-Length: " + bodyLength + "\r\n";
+    request = request + "\r\n";
+    request = request + body;
+
+    return request;
+}
+
+fname Request(host, port, method, path, body) {
+    let socket = Connect(host, port);
+    let payload = BuildRequest(method, host, path, body);
+
+    if (!socket.send(payload)) {
+        socket.close();
+        return "";
+    }
+
+    let response = ReadAll(socket);
+    socket.close();
+    return response;
+}
+
+fname Get(host, port, path) {
+    return Request(host, port, "GET", path, "");
+}
+
+fname Post(host, port, path, body) {
+    return Request(host, port, "POST", path, body);
+}
+
+fname Put(host, port, path, body) {
+    return Request(host, port, "PUT", path, body);
+}
+
+fname Delete(host, port, path) {
+    return Request(host, port, "DELETE", path, "");
+}

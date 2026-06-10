@@ -35,7 +35,8 @@ const SYSTEM_MEMBERS = {
     ['JGex', 'Create a regex-like matcher'],
     ['Regex', 'Alias of JGex'],
     ['Server', 'Networking namespace'],
-    ['SafeExec', 'Execute a callable and capture failures']
+    ['SafeExec', 'Execute a callable and capture failures'],
+    ['Beep', 'Make a beep sound']
   ],
   'System.FileSystem': [
     ['cwd', 'Current working directory'],
