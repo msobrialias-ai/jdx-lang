@@ -1,6 +1,6 @@
 # JDX Language Reference
 
-<img src="vsxode-extension/ogo.png" width="200px" height="200px" />
+<img src="vsxode-extension/logo.png" width="200px" height="200px" />
 
 JDX is a lightweight interpreted language with a JavaScript-like surface syntax and a compact runtime API.  
 This document covers the current syntax, core language features, and the built-in `System` and `Develoment` objects provided by the runtime.
