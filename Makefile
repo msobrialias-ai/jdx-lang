@@ -82,6 +82,7 @@ OUT_DIR      := build/$(TARGET)/$(BUILD)
 
 APP_MAIN     := $(SRC_DIR)/main.cpp
 TEST_SRC     := $(TEST_DIR)/unit_tests.cpp
+GENERATED_HDR := generated/EmbeddedModules.hpp
 
 APP_SRC      := $(shell find $(SRC_DIR) -type f -name '*.cpp' ! -name 'main.cpp' | sort)
 
@@ -207,6 +208,7 @@ WARNINGS := \
 
 COMMON_FLAGS := \
 	-std=c++20 \
+	-I. \
 	-Isrc \
 	-Itests \
 	-MMD \
@@ -286,6 +288,14 @@ help:
 # ------------------------------------------------------------
 # Link rules
 # ------------------------------------------------------------
+$(APP_OBJ): $(GENERATED_HDR)
+$(APP_MAIN_OBJ): $(GENERATED_HDR)
+$(TEST_OBJ): $(GENERATED_HDR)
+
+$(GENERATED_HDR): tools/generate_embed_modules.py $(shell find src/modules -type f -name '*.jdx' | sort)
+	@mkdir -p $(dir $@)
+	python3 tools/generate_embed_modules.py
+
 $(APP_BIN): $(APP_OBJ) $(APP_MAIN_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(APP_OBJ) $(APP_MAIN_OBJ) $(LDFLAGS) $(LDLIBS) -o $@
@@ -311,7 +321,7 @@ $(OUT_DIR)/%.o: %.cpp
 # Cleanup
 # ------------------------------------------------------------
 clean:
-	rm -rf 
+	rm -rf build
 
 distclean: clean
 

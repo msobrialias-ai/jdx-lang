@@ -7,8 +7,9 @@ import hashlib
 import sys
 
 
-MODULE_DIR = Path("src/modules")
-OUTPUT = Path("generated/EmbeddedModules.hpp")
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODULE_DIR = BASE_DIR / "src/modules"
+OUTPUT = BASE_DIR / "generated/EmbeddedModules.hpp"
 
 
 @dataclass(frozen=True)
@@ -42,7 +43,7 @@ def make_raw_string_literal(text: str, seed: str) -> str:
     Create a C++ raw string literal with a delimiter that is very unlikely
     to collide with the module source.
     """
-    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:8]
     delim = f"JDX_{digest}"
 
     # Safety check: extremely unlikely to fail, but keep retrying if needed.
@@ -81,6 +82,7 @@ def render_header(entries: list[ModuleEntry]) -> str:
     lines.append("#pragma once")
     lines.append("")
     lines.append("#include <string>")
+    lines.append("#include <stdexcept>")
     lines.append("#include <string_view>")
     lines.append("#include <unordered_map>")
     lines.append("")

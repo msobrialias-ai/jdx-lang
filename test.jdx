@@ -5,7 +5,7 @@ import { Print, Sleep, Type, Buffer, Log } from "jdx:utils";
 import * as regex from "jdx:regex";
 import { Listen, Accept, ReadAll, Write, Text, HTTP_OK } from "jdx:http";
 
-let server = Listen(8080, 16);
+let server = Listen(8080, 128);
 let client = Accept(server);
 let raw = ReadAll(client);
 let reply = Text(HTTP_OK, "Hello from JDX HTTP");
@@ -27,15 +27,15 @@ Write(client, reply);
 client.close();
 server.close();
 
-let fromBalance = 10000
-let toBalance = 5000
-let amount = 1500
+let fromBalance = 10000;
+let toBalance = 5000;
+let amount = 1500;
 
 if (fromBalance >= amount) {
-  fromBalance = fromBalance - amount
-  toBalance = toBalance + amount
+  fromBalance = fromBalance - amount;
+  toBalance = toBalance + amount;
 
-  System.Output("Transfer Success")
-  System.Output("From:", fromBalance)
-  System.Output("To:", toBalance)
+  System.Output("Transfer Success");
+  System.Output("From:", fromBalance);
+  System.Output("To:", toBalance);
 }

@@ -25,7 +25,7 @@ export const HTTP_NOT_IMPLEMENTED = 501;
 export const HTTP_BAD_GATEWAY = 502;
 export const HTTP_SERVICE_UNAVAILABLE = 503;
 
-fname StatusText(code) {
+export fname StatusText(code) {
     if (code == 100) {
         return "Continue";
     } elif (code == 101) {
@@ -75,31 +75,35 @@ fname StatusText(code) {
     return "OK";
 }
 
-fname Connect(host, port) {
+export fname Connect(host, port) {
     return System.Server.Connect(host, port);
 }
 
-fname Listen(port, backlog) {
+export fname Listen(port, backlog) {
     return System.Server.Listen(port, backlog);
 }
 
-fname Accept(listener) {
+export fname Accept(listener) {
+    if (!listener) {
+        return false;
+    }
+
     return listener.accept();
 }
 
-fname Close(socket) {
+export fname Close(socket) {
     return socket.close();
 }
 
-fname Write(socket, data) {
+export fname Write(socket, data) {
     return socket.send(data);
 }
 
-fname Read(socket) {
+export fname Read(socket) {
     return socket.recv(65536);
 }
 
-fname ReadAll(socket) {
+export fname ReadAll(socket) {
     let output = "";
 
     while (true) {
@@ -119,15 +123,15 @@ fname ReadAll(socket) {
     return output;
 }
 
-fname Response(statusCode, contentType, body) {
+export fname Response(statusCode, contentType, body) {
     return System.Server.ResponseHeader(statusCode, contentType, body);
 }
 
-fname ResponseWithHeaders(statusCode, contentType, body, headers) {
+export fname ResponseWithHeaders(statusCode, contentType, body, headers) {
     return System.Server.ResponseHeader(statusCode, contentType, body, headers);
 }
 
-fname Text(statusCode, body) {
+export fname Text(statusCode, body) {
     return System.Server.ResponseHeader(
         statusCode,
         "text/plain; charset=utf-8",
@@ -135,7 +139,7 @@ fname Text(statusCode, body) {
     );
 }
 
-fname TextWithHeaders(statusCode, body, headers) {
+export fname TextWithHeaders(statusCode, body, headers) {
     return System.Server.ResponseHeader(
         statusCode,
         "text/plain; charset=utf-8",
@@ -144,7 +148,7 @@ fname TextWithHeaders(statusCode, body, headers) {
     );
 }
 
-fname Json(statusCode, value) {
+export fname Json(statusCode, value) {
     return System.Server.ResponseHeader(
         statusCode,
         "application/json; charset=utf-8",
@@ -152,7 +156,7 @@ fname Json(statusCode, value) {
     );
 }
 
-fname JsonWithHeaders(statusCode, value, headers) {
+export fname JsonWithHeaders(statusCode, value, headers) {
     return System.Server.ResponseHeader(
         statusCode,
         "application/json; charset=utf-8",
@@ -161,23 +165,23 @@ fname JsonWithHeaders(statusCode, value, headers) {
     );
 }
 
-fname ParseJson(text) {
+export fname ParseJson(text) {
     return System.Server.JsonParse(text);
 }
 
-fname StringifyJson(value) {
+export fname StringifyJson(value) {
     return System.Server.JsonStringify(value);
 }
 
-fname Resolver(host) {
+export fname Resolver(host) {
     return System.Server.Resolver(host);
 }
 
-fname SocketError() {
+export fname SocketError() {
     return System.SocketError();
 }
 
-fname BuildRequest(method, host, path, body) {
+export fname BuildRequest(method, host, path, body) {
     let request = "";
     let bodyLength = "" + System.Len(body);
 
@@ -193,7 +197,7 @@ fname BuildRequest(method, host, path, body) {
     return request;
 }
 
-fname Request(host, port, method, path, body) {
+export fname Request(host, port, method, path, body) {
     let socket = Connect(host, port);
     let payload = BuildRequest(method, host, path, body);
 
@@ -207,18 +211,18 @@ fname Request(host, port, method, path, body) {
     return response;
 }
 
-fname Get(host, port, path) {
+export fname Get(host, port, path) {
     return Request(host, port, "GET", path, "");
 }
 
-fname Post(host, port, path, body) {
+export fname Post(host, port, path, body) {
     return Request(host, port, "POST", path, body);
 }
 
-fname Put(host, port, path, body) {
+export fname Put(host, port, path, body) {
     return Request(host, port, "PUT", path, body);
 }
 
-fname Delete(host, port, path) {
+export fname Delete(host, port, path) {
     return Request(host, port, "DELETE", path, "");
 }

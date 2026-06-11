@@ -56,6 +56,8 @@ std::string getEnvOr(const char* name, const std::string& fallback) {
 }
 
 std::string platformString() {
+#if defined(_WIN32)
+    return "Windows";
 #elif defined(__APPLE__)
     return "macOS";
 #elif defined(__linux__)
@@ -112,7 +114,7 @@ std::string endianString() {
 std::string formatTimePoint(const std::chrono::system_clock::time_point& point) {
     const std::time_t raw = std::chrono::system_clock::to_time_t(point);
     std::tm tm{};
-    gmtime_r(&raw, &tm);7
+    gmtime_r(&raw, &tm);
 
     std::ostringstream out;
     out << std::put_time(&tm, "%Y-%m-%d %H:%M:%S UTC");
@@ -1580,7 +1582,7 @@ static Value makeServerNamespace() {
     return Value(server);
 }
 
-static void beepTone(int freq, int durationMs) {
+static void beepTone(int /*freq*/, int durationMs) {
     std::cout << '\a' << std::flush;
 
     if (durationMs > 0) {
@@ -1590,13 +1592,13 @@ static void beepTone(int freq, int durationMs) {
     }
 }
 
-Value makeSystemObject(const std::vector<std::string>& args) {
+Value makeSystemObject(const std::vector<std::string>& systemArgs) {
     auto system = std::make_shared<Object>("System");
 
-    system->properties.emplace("Args", [&args]() {
+    system->properties.emplace("Args", [&systemArgs]() {
         auto array = std::make_shared<Value::Array>();
-        array->reserve(args.size());
-        for (const auto& arg : args) {
+        array->reserve(systemArgs.size());
+        for (const auto& arg : systemArgs) {
             array->emplace_back(arg);
         }
         return Value(array);
