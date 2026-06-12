@@ -55,24 +55,11 @@ ifeq ($(TARGET),riscv64)
 TARGET := linux-riscv64
 endif
 
-ifeq ($(TARGET),riscv32)
-TARGET := linux-riscv32
-endif
-
-ifeq ($(TARGET),loongarch64)
-TARGET := linux-loongarch64
-endif
-
-ifeq ($(TARGET),wasm)
-TARGET := wasm32
-endif
-
 ifeq ($(TARGET),powerpc64)
 TARGET := linux-powerpc64
 endif
-
-ifeq ($(TARGET),powerpc64le)
-TARGET := linux-powerpc64-le
+ifeq ($(TARGET),android)
+TARGET := android-arm
 endif
 
 # ------------------------------------------------------------
@@ -92,16 +79,6 @@ TEST_OBJ     := $(patsubst %.cpp,$(OUT_DIR)/%.o,$(TEST_SRC))
 
 APP_BIN_NAME := $(PROJECT)
 TEST_BIN_NAME := $(TEST_NAME)
-
-ifeq ($(TARGET),wasm32)
-APP_BIN_NAME  := $(PROJECT)-wasm32.wasm
-TEST_BIN_NAME := $(TEST_NAME).wasm
-endif
-
-ifeq ($(TARGET),cf-wasm)
-APP_BIN_NAME  := $(PROJECT)-cf-wasm.wasm
-TEST_BIN_NAME := $(TEST_NAME)-cf-wasm.wasm
-endif
 
 APP_BIN      := $(OUT_DIR)/$(APP_BIN_NAME)
 TEST_BIN     := $(OUT_DIR)/$(TEST_BIN_NAME)
@@ -150,44 +127,16 @@ ifeq ($(TARGET),linux-riscv32)
   endif
 endif
 
-ifeq ($(TARGET),linux-loongarch64)
-	ifeq ($(CROSS_PREFIX),)
-		CROSS_PREFIX := loongarch64-linux-gnu-
-	endif
-endif
-
 ifeq ($(TARGET),linux-powerpc64)
   ifeq ($(CROSS_PREFIX),)
     CROSS_PREFIX := powerpc64-linux-gnu-
   endif
 endif
 
-ifeq ($(TARGET),linux-powerpc64-le)
+ifeq ($(TARGET),android-arm) 
   ifeq ($(CROSS_PREFIX),)
-    CROSS_PREFIX := powerpc64le-linux-gnu-
+    CROSS_PREFIX := arm-linux-androideabi-
   endif
-endif
-
-ifeq ($(TARGET),wasm32)
-	CC      := clang
-	CXX     := clang++
-	AR      := llvm-ar
-	STRIP   := llvm-strip
-
-	ARCH_FLAGS += --target=wasm32-wasi -nostartfiles
-	LDFLAGS    += --target=wasm32-wasi -Wl,--export-all -Wl,--no-entry
-	EXTRA_DEFS += -DJDX_WASM_PLATFORM=1
-endif
-
-ifeq ($(TARGET),cf-wasm)
-	CC      := clang
-	CXX     := clang++
-	AR      := llvm-ar
-	STRIP   := llvm-strip
-
-	ARCH_FLAGS += --target=wasm32-unknown-unknown
-	LDFLAGS    += --target=wasm32-unknown-unknown -Wl,--export-all -Wl,--no-entry
-	EXTRA_DEFS += -DJDX_WASM_PLATFORM=1
 endif
 
 CC      ?= $(CROSS_PREFIX)gcc
@@ -279,10 +228,7 @@ help:
 	@echo "  make TARGET=linux-arm64"
 	@echo "  make TARGET=linux-armhf"
 	@echo "  make TARGET=linux-riscv64"
-	@echo "  make TARGET=linux-riscv32"
-	@echo "  make TARGET=linux-loongarch64"
-	@echo "  make TARGET=wasm"
-	@echo "  make TARGET=cf-wasm"
+	@echo "  makw TARGET=android-arm"
 	@echo "  make BUILD=debug"
 	@echo "  make ENABLE_FAST_MATH=1"
 	@echo "  make ENABLE_LTO=0"
