@@ -176,6 +176,7 @@ ifeq ($(TARGET),wasm32)
 
 	ARCH_FLAGS += --target=wasm32-wasi -nostartfiles
 	LDFLAGS    += --target=wasm32-wasi -Wl,--export-all -Wl,--no-entry
+	EXTRA_DEFS += -DJDX_WASM_PLATFORM=1
 endif
 
 ifeq ($(TARGET),cf-wasm)
@@ -186,6 +187,7 @@ ifeq ($(TARGET),cf-wasm)
 
 	ARCH_FLAGS += --target=wasm32-unknown-unknown
 	LDFLAGS    += --target=wasm32-unknown-unknown -Wl,--export-all -Wl,--no-entry
+	EXTRA_DEFS += -DJDX_WASM_PLATFORM=1
 endif
 
 CC      ?= $(CROSS_PREFIX)gcc

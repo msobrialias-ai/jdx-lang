@@ -8,7 +8,6 @@
 #include "utils/Logger.hpp"
 
 #include <algorithm>
-#include <arpa/inet.h>
 #include <chrono>
 #include <cctype>
 #include <cerrno>
@@ -19,8 +18,15 @@
 #include <iomanip>
 #include <limits>
 #include <mutex>
-#include <netdb.h>
 #include <optional>
+
+#if !defined(JDX_WASM_PLATFORM)
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
+
 #include <random>
 #include <set>
 #include <sstream>
@@ -30,8 +36,6 @@
 #include <utility>
 #include <ctime>
 #include <iostream>
-#include <sys/socket.h>
-#include <unistd.h>
 
 namespace fs = std::filesystem;
 
@@ -1082,6 +1086,7 @@ private:
     }
 };
 
+#if !defined(JDX_WASM_PLATFORM)
 struct SocketState {
     int fd {-1};
     bool connected {false};
@@ -1390,6 +1395,14 @@ static Value makeListeningObject(std::shared_ptr<ListenerState>& outState, int p
     return listener;
 }
 
+
+
+#else
+static std::string socketErrorString() {
+    return std::string("Networking is unavailable in this build.");
+}
+#endif
+
 static std::string statusText(int code) {
     switch (code) {
         case 100: return "Continue";
@@ -1452,6 +1465,7 @@ static std::string buildResponseHeader(int statusCode,
 static Value makeServerNamespace() {
     auto server = std::make_shared<Object>("System.Server");
 
+#if !defined(JDX_WASM_PLATFORM)
     server->properties.emplace("Socket", makeNative("System.Server.Socket",
         [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
             std::shared_ptr<SocketState> state;
@@ -1532,6 +1546,58 @@ static Value makeServerNamespace() {
             std::shared_ptr<ListenerState> state;
             return makeListeningObject(state, port, backlog);
         }));
+#else
+    server->properties.emplace("Socket", makeNative("System.Server.Socket",
+        [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+            auto sock = std::make_shared<Object>("System.Server.Socket");
+
+            sock->properties.emplace("connect", makeNative("System.Server.Socket.connect",
+                [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+                    return Value(false);
+                }));
+            sock->properties.emplace("send", makeNative("System.Server.Socket.send",
+                [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+                    return Value(static_cast<std::int64_t>(-1));
+                }));
+            sock->properties.emplace("recv", makeNative("System.Server.Socket.recv",
+                [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+                    return Value(std::string{});
+                }));
+            sock->properties.emplace("close", makeNative("System.Server.Socket.close",
+                [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+                    return Value(false);
+                }));
+            sock->properties.emplace("setTimeout", makeNative("System.Server.Socket.setTimeout",
+                [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+                    return Value(false);
+                }));
+            sock->properties.emplace("info", makeNative("System.Server.Socket.info",
+                [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+                    auto info = std::make_shared<Object>("System.Server.Socket.Info");
+                    info->properties.emplace("fd", static_cast<std::int64_t>(-1));
+                    info->properties.emplace("connected", false);
+                    info->properties.emplace("listening", false);
+                    return Value(info);
+                }));
+
+            return Value(sock);
+        }));
+
+    server->properties.emplace("Resolver", makeNative("System.Server.Resolver",
+        [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+            return Value(std::string{});
+        }));
+
+    server->properties.emplace("Connect", makeNative("System.Server.Connect",
+        [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+            return Value(false);
+        }));
+
+    server->properties.emplace("Listen", makeNative("System.Server.Listen",
+        [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+            return Value(false);
+        }));
+#endif
 
     server->properties.emplace("JsonParse", makeNative("System.Server.JsonParse",
         [](interpreter::Interpreter&, const std::vector<Value>& a) -> Value {

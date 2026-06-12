@@ -79,7 +79,7 @@ jobs:
             cross_prefix: powerpc64-linux-gnu-
             artifact_name: jdx-linux-powerpc64
             archive_name: jdx-linux-powerpc64
-            binary_path: build/linux-powepc64/release/jdx
+            binary_path: build/linux-powerpc64/release/jdx
             
           - target: linux-powerpc64-le
             mode: linux
@@ -128,7 +128,7 @@ jobs:
             wget
 
       - name: Install WASI SDK
-        if: matrix.target == 'wasm'
+        if: matrix.mode == 'wasm'
         run: |
           WASI_VERSION="33"
           WASI_VERSION_FULL="33.0"
@@ -144,18 +144,14 @@ jobs:
 
       - name: Build release
         run: |
-          if [ "${{ matrix.target }}" = "wasm" ]; then
+          if [ "${{ matrix.mode }}" = "wasm" ]; then
             make -j"$(nproc)" build \
-              TARGET=wasm \
+              TARGET=${{ matrix.target }} \
               BUILD=release \
               CC=/opt/wasi-sdk/bin/clang \
               CXX=/opt/wasi-sdk/bin/clang++ \
               AR=/opt/wasi-sdk/bin/llvm-ar \
               STRIP=/opt/wasi-sdk/bin/llvm-strip
-          elif [ "${{ matrix.target }}" = "cf-wasm" ]; then
-            make -j"$(nproc)" build \
-              TARGET=cf-wasm \
-              BUILD=release
           else
             make -j"$(nproc)" build \
               TARGET=${{ matrix.target }} \
