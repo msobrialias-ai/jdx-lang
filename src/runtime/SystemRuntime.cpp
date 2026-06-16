@@ -32,6 +32,21 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/utsname.h>
+#include <cstdint>
+
+#if defined(JDX_USE_ALSA)
+#include <alsa/asoundlib.h>
+#endif
+
+#if defined(__ANDROID__)
+#include <SLES/OpenSLES.h>
+#include <SLES/OpenSLES_Android.h>
+#endif
+
+#if defined(__APPLE__)
+#include <AudioToolbox/AudioToolbox.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -90,6 +105,8 @@ std::string archString() {
     #else
         return "PowerPC64";
     #endif
+#elif defined(__s390x__)
+    return "s390x";
 #else
     return "Unknown";
 #endif
@@ -135,6 +152,23 @@ std::string tempDirectory() {
 
 std::string cwdString() {
     return fs::current_path().string();
+}
+
+double parseDoubleOrNaN(const std::string& text) {
+    if (text.empty()) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    try {
+        std::size_t idx = 0U;
+        const double value = std::stod(text, &idx);
+        if (idx != text.size()) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        return value;
+    } catch (...) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
 }
 
 runtime::Value makeErrorResult(const std::string& message) {
@@ -772,6 +806,130 @@ Value makeSystemInfoObject() {
     object->properties.emplace("architecture", archString());
     object->properties.emplace("compiler", compilerString());
     object->properties.emplace("endianness", endianString());
+    return Value(object);
+}
+
+Value makeGeoLocationObject() {
+    auto object = std::make_shared<Object>("System.GeoLocation");
+
+    const std::string city = getEnvOr("JDX_GEO_CITY", getEnvOr("CITY", std::string{}));
+    const std::string region = getEnvOr("JDX_GEO_REGION", getEnvOr("STATE", std::string{}));
+    const std::string country = getEnvOr("JDX_GEO_COUNTRY", getEnvOr("COUNTRY", std::string{}));
+    const std::string countryCode = getEnvOr("JDX_GEO_COUNTRY_CODE", getEnvOr("COUNTRY_CODE", std::string{}));
+    const std::string timezone = getEnvOr("JDX_GEO_TIMEZONE", getEnvOr("TZ", std::string{}));
+    const std::string locale = getEnvOr("LC_ALL", getEnvOr("LC_CTYPE", getEnvOr("LANG", std::string{})));
+    const std::string ip = getEnvOr("JDX_GEO_IP", std::string{});
+    const std::string latitude = getEnvOr("JDX_GEO_LAT", std::string{});
+    const std::string longitude = getEnvOr("JDX_GEO_LON", std::string{});
+
+    const bool hasData = !city.empty() || !region.empty() || !country.empty() ||
+                         !countryCode.empty() || !timezone.empty() || !locale.empty() ||
+                         !ip.empty() || !latitude.empty() || !longitude.empty();
+
+    object->properties.emplace("source", hasData ? std::string("environment") : std::string("unknown"));
+    object->properties.emplace("city", city);
+    object->properties.emplace("region", region);
+    object->properties.emplace("country", country);
+    object->properties.emplace("countryCode", countryCode);
+    object->properties.emplace("timezone", timezone);
+    object->properties.emplace("locale", locale);
+    object->properties.emplace("ip", ip);
+
+    const double latValue = parseDoubleOrNaN(latitude);
+    const double lonValue = parseDoubleOrNaN(longitude);
+    object->properties.emplace("latitude", std::isnan(latValue) ? makeNull() : Value(latValue));
+    object->properties.emplace("longitude", std::isnan(lonValue) ? makeNull() : Value(lonValue));
+
+    return Value(object);
+}
+
+Value makeHardwareInfoObject() {
+    auto object = std::make_shared<Object>("System.HardwareInfo");
+
+    std::string hostname;
+    char hostbuf[256] {};
+    if (::gethostname(hostbuf, sizeof(hostbuf)) == 0) {
+        hostname = hostbuf;
+    }
+
+    std::string sysname;
+    std::string nodename;
+    std::string release;
+    std::string version;
+    std::string machine = archString();
+    std::string cpuModel;
+
+    {
+        struct utsname uts {};
+        if (::uname(&uts) == 0) {
+            sysname = uts.sysname;
+            nodename = uts.nodename;
+            release = uts.release;
+            version = uts.version;
+            machine = uts.machine;
+        }
+    }
+
+    std::size_t cpuCores = std::thread::hardware_concurrency();
+    if (cpuCores == 0U) {
+        cpuCores = 1U;
+    }
+
+    std::uint64_t memoryBytes = 0U;
+    {
+        std::ifstream meminfo("/proc/meminfo");
+        std::string key;
+        std::uint64_t value = 0U;
+        std::string unit;
+        while (meminfo >> key >> value >> unit) {
+            if (key == "MemTotal:") {
+                memoryBytes = (unit == "kB") ? value * 1024ULL : value;
+                break;
+            }
+        }
+    }
+
+    {
+        std::ifstream cpuinfo("/proc/cpuinfo");
+        std::string line;
+        while (std::getline(cpuinfo, line)) {
+            const auto pos = line.find(':');
+            if (pos == std::string::npos) {
+                continue;
+            }
+
+            std::string key = line.substr(0, pos);
+            std::string value = line.substr(pos + 1U);
+
+            const auto trim = [](std::string s) {
+                const auto first = s.find_first_not_of(" 	");
+                const auto last = s.find_last_not_of(" 	");
+                if (first == std::string::npos || last == std::string::npos) {
+                    return std::string{};
+                }
+                return s.substr(first, last - first + 1U);
+            };
+
+            key = trim(key);
+            value = trim(value);
+
+            if (key == "model name" || key == "Hardware" || key == "Processor") {
+                cpuModel = value;
+                break;
+            }
+        }
+    }
+
+    object->properties.emplace("hostname", hostname);
+    object->properties.emplace("nodename", nodename);
+    object->properties.emplace("os", sysname);
+    object->properties.emplace("release", release);
+    object->properties.emplace("version", version);
+    object->properties.emplace("machine", machine);
+    object->properties.emplace("cores", static_cast<std::int64_t>(cpuCores));
+    object->properties.emplace("memoryBytes", static_cast<std::int64_t>(memoryBytes));
+    object->properties.emplace("cpuModel", cpuModel);
+
     return Value(object);
 }
 
@@ -1582,15 +1740,386 @@ static Value makeServerNamespace() {
     return Value(server);
 }
 
-static void beepTone(int /*freq*/, int durationMs) {
-    std::cout << '\a' << std::flush;
+static constexpr unsigned kBeepSampleRate = 44100U;
+static constexpr double kTwoPi = 6.28318530717958647692528676655900577;
 
+std::vector<int16_t> makeToneSamples(int freq, int durationMs, unsigned sampleRate = kBeepSampleRate) {
+    if (durationMs <= 0) {
+        return {};
+    }
+
+    const std::size_t frameCount = static_cast<std::size_t>(
+        (static_cast<std::uint64_t>(sampleRate) * static_cast<std::uint64_t>(durationMs)) / 1000ULL
+    );
+
+    std::vector<int16_t> samples(frameCount);
+    if (frameCount == 0U) {
+        return samples;
+    }
+
+    const double step = (kTwoPi * static_cast<double>(freq)) / static_cast<double>(sampleRate);
+    double phase = 0.0;
+
+    for (std::size_t i = 0U; i < frameCount; ++i) {
+        const double value = std::sin(phase);
+        samples[i] = static_cast<int16_t>(value * 0.25 * 32767.0);
+        phase += step;
+        if (phase >= kTwoPi) {
+            phase -= kTwoPi;
+        }
+    }
+
+    return samples;
+}
+
+void fallbackConsoleBeep(int durationMs) {
+    std::cout << '\a' << std::flush;
     if (durationMs > 0) {
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(durationMs)
-        );
+        std::this_thread::sleep_for(std::chrono::milliseconds(durationMs));
     }
 }
+
+#if defined(JDX_USE_ALSA)
+bool playToneWithAlsa(int freq, int durationMs) {
+    const auto samples = makeToneSamples(freq, durationMs, kBeepSampleRate);
+    if (samples.empty()) {
+        return true;
+    }
+
+    snd_pcm_t* pcm = nullptr;
+    if (snd_pcm_open(&pcm, "default", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+        return false;
+    }
+
+    snd_pcm_hw_params_t* params = nullptr;
+    snd_pcm_hw_params_alloca(&params);
+
+    bool ok = true;
+    ok = ok && (snd_pcm_hw_params_any(pcm, params) >= 0);
+    ok = ok && (snd_pcm_hw_params_set_access(pcm, params, SND_PCM_ACCESS_RW_INTERLEAVED) >= 0);
+    ok = ok && (snd_pcm_hw_params_set_format(pcm, params, SND_PCM_FORMAT_S16_LE) >= 0);
+
+    unsigned int rate = kBeepSampleRate;
+    ok = ok && (snd_pcm_hw_params_set_rate_near(pcm, params, &rate, nullptr) >= 0);
+    ok = ok && (snd_pcm_hw_params_set_channels(pcm, params, 1U) >= 0);
+
+    snd_pcm_uframes_t periodFrames = 1024U;
+    ok = ok && (snd_pcm_hw_params_set_period_size_near(pcm, params, &periodFrames, nullptr) >= 0);
+    ok = ok && (snd_pcm_hw_params(pcm, params) >= 0);
+    if (!ok) {
+        snd_pcm_close(pcm);
+        return false;
+    }
+
+    if (snd_pcm_prepare(pcm) < 0) {
+        snd_pcm_close(pcm);
+        return false;
+    }
+
+    std::size_t offset = 0U;
+    while (offset < samples.size()) {
+        const snd_pcm_uframes_t framesToWrite = static_cast<snd_pcm_uframes_t>(
+            std::min<std::size_t>(static_cast<std::size_t>(periodFrames), samples.size() - offset)
+        );
+
+        const snd_pcm_sframes_t written = snd_pcm_writei(pcm, samples.data() + offset, framesToWrite);
+        if (written == -EPIPE) {
+            snd_pcm_prepare(pcm);
+            continue;
+        }
+
+        if (written < 0) {
+            if (snd_pcm_recover(pcm, static_cast<int>(written), 1) < 0) {
+                snd_pcm_close(pcm);
+                return false;
+            }
+            continue;
+        }
+
+        offset += static_cast<std::size_t>(written);
+    }
+
+    snd_pcm_drain(pcm);
+    snd_pcm_close(pcm);
+    return true;
+}
+#endif
+
+#if defined(__ANDROID__)
+bool playToneWithOpenSLES(int freq, int durationMs) {
+    const auto samples = makeToneSamples(freq, durationMs, kBeepSampleRate);
+    if (samples.empty()) {
+        return true;
+    }
+
+    SLObjectItf engineObject = nullptr;
+    SLEngineItf engineEngine = nullptr;
+    if (slCreateEngine(&engineObject, 0, nullptr, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) {
+        return false;
+    }
+
+    auto destroyEngine = [&]() {
+        if (engineObject != nullptr) {
+            (*engineObject)->Destroy(engineObject);
+            engineObject = nullptr;
+            engineEngine = nullptr;
+        }
+    };
+
+    if ((*engineObject)->Realize(engineObject, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) {
+        destroyEngine();
+        return false;
+    }
+
+    if ((*engineObject)->GetInterface(engineObject, SL_IID_ENGINE, &engineEngine) != SL_RESULT_SUCCESS) {
+        destroyEngine();
+        return false;
+    }
+
+    SLObjectItf outputMixObject = nullptr;
+    if ((*engineEngine)->CreateOutputMix(engineEngine, &outputMixObject, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) {
+        destroyEngine();
+        return false;
+    }
+
+    auto destroyOutputMix = [&]() {
+        if (outputMixObject != nullptr) {
+            (*outputMixObject)->Destroy(outputMixObject);
+            outputMixObject = nullptr;
+        }
+    };
+
+    if ((*outputMixObject)->Realize(outputMixObject, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) {
+        destroyOutputMix();
+        destroyEngine();
+        return false;
+    }
+
+    const SLDataLocator_AndroidSimpleBufferQueue locBufferQueue {
+        SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE,
+        1U
+    };
+
+    const SLDataFormat_PCM formatPcm {
+        SL_DATAFORMAT_PCM,
+        1U,
+        static_cast<SLuint32>(kBeepSampleRate * 1000U),
+        SL_PCMSAMPLEFORMAT_FIXED_16,
+        SL_PCMSAMPLEFORMAT_FIXED_16,
+        SL_SPEAKER_FRONT_CENTER,
+        SL_BYTEORDER_LITTLEENDIAN
+    };
+
+    const SLDataSource audioSource {&locBufferQueue, &formatPcm};
+
+    const SLDataLocator_OutputMix locOutputMix {
+        SL_DATALOCATOR_OUTPUTMIX,
+        outputMixObject
+    };
+
+    const SLDataSink audioSink {&locOutputMix, nullptr};
+
+    const SLInterfaceID interfaceIds[] = {SL_IID_ANDROIDSIMPLEBUFFERQUEUE};
+    const SLboolean interfaceRequired[] = {SL_BOOLEAN_TRUE};
+
+    SLObjectItf playerObject = nullptr;
+    SLPlayItf playItf = nullptr;
+    SLAndroidSimpleBufferQueueItf bufferQueueItf = nullptr;
+
+    if ((*engineEngine)->CreateAudioPlayer(
+            engineEngine,
+            &playerObject,
+            &audioSource,
+            &audioSink,
+            1U,
+            interfaceIds,
+            interfaceRequired) != SL_RESULT_SUCCESS) {
+        destroyOutputMix();
+        destroyEngine();
+        return false;
+    }
+
+    auto destroyPlayer = [&]() {
+        if (playerObject != nullptr) {
+            (*playerObject)->Destroy(playerObject);
+            playerObject = nullptr;
+            playItf = nullptr;
+            bufferQueueItf = nullptr;
+        }
+    };
+
+    if ((*playerObject)->Realize(playerObject, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) {
+        destroyPlayer();
+        destroyOutputMix();
+        destroyEngine();
+        return false;
+    }
+
+    if ((*playerObject)->GetInterface(playerObject, SL_IID_PLAY, &playItf) != SL_RESULT_SUCCESS) {
+        destroyPlayer();
+        destroyOutputMix();
+        destroyEngine();
+        return false;
+    }
+
+    if ((*playerObject)->GetInterface(playerObject, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &bufferQueueItf) != SL_RESULT_SUCCESS) {
+        destroyPlayer();
+        destroyOutputMix();
+        destroyEngine();
+        return false;
+    }
+
+    if ((*bufferQueueItf)->Enqueue(
+            bufferQueueItf,
+            samples.data(),
+            static_cast<SLuint32>(samples.size() * sizeof(int16_t))) != SL_RESULT_SUCCESS) {
+        destroyPlayer();
+        destroyOutputMix();
+        destroyEngine();
+        return false;
+    }
+
+    if ((*playItf)->SetPlayState(playItf, SL_PLAYSTATE_PLAYING) != SL_RESULT_SUCCESS) {
+        destroyPlayer();
+        destroyOutputMix();
+        destroyEngine();
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(durationMs + 60));
+
+    destroyPlayer();
+    destroyOutputMix();
+    destroyEngine();
+    return true;
+}
+#endif
+
+#if defined(__APPLE__)
+struct MacBeepState {
+    const std::vector<int16_t>* samples {nullptr};
+    std::size_t cursor {0U};
+};
+
+void fillMacAudioQueueBuffer(MacBeepState& state, AudioQueueBufferRef buffer) {
+    const std::size_t remaining = state.samples->size() - state.cursor;
+    const std::size_t maxFrames = static_cast<std::size_t>(buffer->mAudioDataBytesCapacity / sizeof(int16_t));
+    const std::size_t framesToCopy = std::min(remaining, maxFrames);
+
+    if (framesToCopy == 0U) {
+        buffer->mAudioDataByteSize = 0U;
+        return;
+    }
+
+    std::memcpy(buffer->mAudioData, state.samples->data() + state.cursor, framesToCopy * sizeof(int16_t));
+    buffer->mAudioDataByteSize = static_cast<UInt32>(framesToCopy * sizeof(int16_t));
+    state.cursor += framesToCopy;
+}
+
+void audioQueueOutputCallback(void* userData, AudioQueueRef queue, AudioQueueBufferRef buffer) {
+    auto* state = static_cast<MacBeepState*>(userData);
+    if (state == nullptr || state->samples == nullptr || state->cursor >= state->samples->size()) {
+        return;
+    }
+
+    fillMacAudioQueueBuffer(*state, buffer);
+    if (buffer->mAudioDataByteSize > 0U) {
+        AudioQueueEnqueueBuffer(queue, buffer, 0U, nullptr);
+    }
+}
+
+bool playToneWithAudioQueue(int freq, int durationMs) {
+    const auto samples = makeToneSamples(freq, durationMs, kBeepSampleRate);
+    if (samples.empty()) {
+        return true;
+    }
+
+    AudioStreamBasicDescription format {};
+    format.mSampleRate = static_cast<Float64>(kBeepSampleRate);
+    format.mFormatID = kAudioFormatLinearPCM;
+    format.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked;
+    format.mBytesPerPacket = sizeof(int16_t);
+    format.mFramesPerPacket = 1U;
+    format.mBytesPerFrame = sizeof(int16_t);
+    format.mChannelsPerFrame = 1U;
+    format.mBitsPerChannel = 16U;
+    format.mReserved = 0U;
+
+    MacBeepState state;
+    state.samples = &samples;
+
+    AudioQueueRef queue = nullptr;
+    if (AudioQueueNewOutput(
+            &format,
+            audioQueueOutputCallback,
+            &state,
+            nullptr,
+            nullptr,
+            0U,
+            &queue) != noErr) {
+        return false;
+    }
+
+    const auto cleanup = [&]() {
+        if (queue != nullptr) {
+            AudioQueueStop(queue, true);
+            AudioQueueDispose(queue, true);
+            queue = nullptr;
+        }
+    };
+
+    constexpr UInt32 bufferSize = 4096U;
+    constexpr int bufferCount = 3;
+
+    for (int i = 0; i < bufferCount && state.cursor < state.samples->size(); ++i) {
+        AudioQueueBufferRef buffer = nullptr;
+        if (AudioQueueAllocateBuffer(queue, bufferSize, &buffer) != noErr) {
+            cleanup();
+            return false;
+        }
+
+        fillMacAudioQueueBuffer(state, buffer);
+        if (buffer->mAudioDataByteSize > 0U) {
+            if (AudioQueueEnqueueBuffer(queue, buffer, 0U, nullptr) != noErr) {
+                cleanup();
+                return false;
+            }
+        }
+    }
+
+    if (AudioQueueStart(queue, nullptr) != noErr) {
+        cleanup();
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(durationMs + 80));
+    cleanup();
+    return true;
+}
+#endif
+
+static void beepTone(int freq, int durationMs) {
+    freq = std::clamp(freq, 37, 32767);
+    durationMs = std::max(durationMs, 1);
+
+    bool played = false;
+
+#if defined(__ANDROID__)
+    played = playToneWithOpenSLES(freq, durationMs);
+#elif defined(__APPLE__)
+    played = playToneWithAudioQueue(freq, durationMs);
+#elif defined(JDX_USE_ALSA)
+    played = playToneWithAlsa(freq, durationMs);
+#else
+    (void)freq;
+    (void)durationMs;
+#endif
+
+    if (!played) {
+        fallbackConsoleBeep(durationMs);
+    }
+}
+
 
 Value makeSystemObject(const std::vector<std::string>& systemArgs) {
     auto system = std::make_shared<Object>("System");
@@ -1759,6 +2288,16 @@ Value makeSystemObject(const std::vector<std::string>& systemArgs) {
     system->properties.emplace("ShowSystemInfo", makeNative("System.ShowSystemInfo",
         [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
             return makeSystemInfoObject();
+        }));
+
+    system->properties.emplace("GeoLocation", makeNative("System.GeoLocation",
+        [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+            return makeGeoLocationObject();
+        }));
+
+    system->properties.emplace("HardwareInfo", makeNative("System.HardwareInfo",
+        [](interpreter::Interpreter&, const std::vector<Value>&) -> Value {
+            return makeHardwareInfoObject();
         }));
 
     system->properties.emplace("JGex", makeNative("System.JGex",

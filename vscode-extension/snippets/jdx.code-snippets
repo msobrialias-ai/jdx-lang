@@ -17,6 +17,15 @@
     ],
     "description": "Create a JDX class."
   },
+  "Async function declaration": {
+    "prefix": "async",
+    "body": [
+      "async fname ${1:name}(${2:params}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Create an async JDX function."
+  },
   "Let binding": {
     "prefix": "let",
     "body": "let ${1:name} = ${2:value};",
@@ -64,6 +73,19 @@
       "}"
     ],
     "description": "Create a try/catch block."
+  },
+  "Switch statement": {
+    "prefix": "switch",
+    "body": [
+      "switch (${1:value}) {",
+      "\tcase ${2:match}:",
+      "\t\t${3}",
+      "\tbreak;",
+      "\tdefault:",
+      "\t\t${0}",
+      "}"
+    ],
+    "description": "Create a switch/case block."
   },
   "Import named": {
     "prefix": "import",

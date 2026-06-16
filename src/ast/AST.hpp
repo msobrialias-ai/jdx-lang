@@ -83,6 +83,11 @@ struct SetExpr final : Expr {
         : Expr(t), object(std::move(o)), name(std::move(n)), value(std::move(v)) {}
 };
 
+struct AwaitExpr final : Expr {
+    ExprPtr expression;
+    AwaitExpr(lexer::Token t, ExprPtr e) : Expr(t), expression(std::move(e)) {}
+};
+
 struct ImportBinding {
     std::string imported;
     std::string local;
@@ -116,11 +121,12 @@ struct VarStmt final : Stmt {
 struct FnStmt final : Stmt {
     bool isExported {false};
     bool isDefaultExport {false};
+    bool isAsync {false};
     std::string name;
     std::vector<std::string> params;
     BlockPtr body;
-    FnStmt(lexer::Token t, bool e, bool d, std::string n, std::vector<std::string> p, BlockPtr b)
-        : Stmt(t), isExported(e), isDefaultExport(d), name(std::move(n)), params(std::move(p)), body(std::move(b)) {}
+    FnStmt(lexer::Token t, bool e, bool d, bool a, std::string n, std::vector<std::string> p, BlockPtr b)
+        : Stmt(t), isExported(e), isDefaultExport(d), isAsync(a), name(std::move(n)), params(std::move(p)), body(std::move(b)) {}
 };
 
 struct ReturnStmt final : Stmt {
@@ -171,6 +177,24 @@ struct TryCatchStmt final : Stmt {
     StmtPtr catchBlock;
     TryCatchStmt(lexer::Token t, StmtPtr tr, std::string name, StmtPtr ct)
         : Stmt(t), tryBlock(std::move(tr)), catchName(std::move(name)), catchBlock(std::move(ct)) {}
+};
+
+struct SwitchCase {
+    lexer::Token token;
+    ExprPtr condition;
+    std::vector<StmtPtr> statements;
+
+    SwitchCase(lexer::Token t, ExprPtr c, std::vector<StmtPtr> s)
+        : token(std::move(t)), condition(std::move(c)), statements(std::move(s)) {}
+};
+
+struct SwitchStmt final : Stmt {
+    ExprPtr condition;
+    std::vector<SwitchCase> cases;
+    std::vector<StmtPtr> defaultStatements;
+    bool hasDefault {false};
+
+    SwitchStmt(lexer::Token t, ExprPtr c) : Stmt(t), condition(std::move(c)) {}
 };
 
 struct BlockStmt final : Stmt {

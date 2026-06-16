@@ -73,6 +73,13 @@ ast::StmtPtr Parser::declaration(const bool exported, const bool defaultExport) 
     if (match({TokenType::Export})) {
         return exportDeclaration();
     }
+    if (match({TokenType::Async})) {
+        if (match({TokenType::FName})) {
+            return functionDeclaration(exported, defaultExport, true);
+        }
+        utils::raiseSyntaxError(peek().filename, peek().line, peek().column,
+                                "Expected 'fname' after 'async'.");
+    }
     if (match({TokenType::Let})) {
         return varDeclaration(false, exported);
     }
@@ -80,7 +87,7 @@ ast::StmtPtr Parser::declaration(const bool exported, const bool defaultExport) 
         return varDeclaration(true, exported);
     }
     if (match({TokenType::FName})) {
-        return functionDeclaration(exported, defaultExport);
+        return functionDeclaration(exported, defaultExport, false);
     }
     if (match({TokenType::Class})) {
         return classDeclaration(exported, defaultExport);
@@ -161,17 +168,25 @@ ast::StmtPtr Parser::exportDeclaration() {
     const Token& keyword = previous();
 
     if (match({TokenType::Default})) {
+        if (match({TokenType::Async})) {
+            consume(TokenType::FName, "Expected 'fname' after 'async' in default export.");
+            return functionDeclaration(false, true, true);
+        }
         if (match({TokenType::Class})) {
             return classDeclaration(false, true);
         }
         if (match({TokenType::FName})) {
-            return functionDeclaration(false, true);
+            return functionDeclaration(false, true, false);
         }
         auto value = expression();
         consume(TokenType::Semicolon, "Expected ';' after default export.");
         return std::make_unique<ExportDefaultStmt>(keyword, std::move(value));
     }
 
+    if (match({TokenType::Async})) {
+        consume(TokenType::FName, "Expected 'fname' after 'async' in export declaration.");
+        return functionDeclaration(true, false, true);
+    }
     if (match({TokenType::Let})) {
         return varDeclaration(false, true);
     }
@@ -179,7 +194,7 @@ ast::StmtPtr Parser::exportDeclaration() {
         return varDeclaration(true, true);
     }
     if (match({TokenType::FName})) {
-        return functionDeclaration(true, false);
+        return functionDeclaration(true, false, false);
     }
     if (match({TokenType::Class})) {
         return classDeclaration(true, false);
@@ -225,7 +240,7 @@ ast::StmtPtr Parser::varDeclaration(const bool isConst, const bool exported) {
     return std::make_unique<VarStmt>(name, isConst, exported, name.lexeme, std::move(init));
 }
 
-ast::StmtPtr Parser::functionDeclaration(const bool exported, const bool defaultExport) {
+ast::StmtPtr Parser::functionDeclaration(const bool exported, const bool defaultExport, const bool isAsync) {
     const Token& keyword = previous();
     std::string name;
     if (check(TokenType::Identifier)) {
@@ -250,7 +265,7 @@ ast::StmtPtr Parser::functionDeclaration(const bool exported, const bool default
     }
     consume(TokenType::RightBrace, "Expected '}' after function body.");
 
-    return std::make_unique<FnStmt>(keyword, exported, defaultExport, std::move(name), std::move(params), std::move(body));
+    return std::make_unique<FnStmt>(keyword, exported, defaultExport, isAsync, std::move(name), std::move(params), std::move(body));
 }
 
 ast::StmtPtr Parser::classDeclaration(const bool exported, const bool defaultExport) {
@@ -281,6 +296,9 @@ ast::StmtPtr Parser::statement() {
     }
     if (match({TokenType::For})) {
         return forStatement();
+    }
+    if (match({TokenType::Switch})) {
+        return switchStatement();
     }
     if (match({TokenType::Try})) {
         return tryCatchStatement();
@@ -326,6 +344,41 @@ ast::StmtPtr Parser::tryCatchStatement() {
     auto catchBlock = statement();
 
     return std::make_unique<TryCatchStmt>(token, std::move(tryBlock), catchName, std::move(catchBlock));
+}
+
+ast::StmtPtr Parser::switchStatement() {
+    const Token& token = previous();
+    consume(TokenType::LeftParen, "Expected '(' after 'switch'.");
+    auto cond = expression();
+    consume(TokenType::RightParen, "Expected ')' after switch condition.");
+    consume(TokenType::LeftBrace, "Expected '{' before switch body.");
+
+    auto node = std::make_unique<SwitchStmt>(token, std::move(cond));
+    while (!check(TokenType::RightBrace) && !isAtEnd()) {
+        if (match({TokenType::Case})) {
+            const Token caseToken = previous();
+            auto caseValue = expression();
+            consume(TokenType::Colon, "Expected ':' after case value.");
+            auto body = parseSwitchBody();
+            node->cases.emplace_back(caseToken, std::move(caseValue), std::move(body));
+            continue;
+        }
+        if (match({TokenType::Default})) {
+            if (node->hasDefault) {
+                utils::raiseSyntaxError(previous().filename, previous().line, previous().column,
+                                        "Duplicate default clause in switch statement.");
+            }
+            consume(TokenType::Colon, "Expected ':' after default.");
+            node->defaultStatements = parseSwitchBody();
+            node->hasDefault = true;
+            continue;
+        }
+        utils::raiseSyntaxError(peek().filename, peek().line, peek().column,
+                                "Expected 'case', 'default', or '}' in switch statement.");
+    }
+
+    consume(TokenType::RightBrace, "Expected '}' after switch body.");
+    return node;
 }
 
 ast::StmtPtr Parser::throwStatement() {
@@ -378,7 +431,7 @@ ast::StmtPtr Parser::forStatement() {
     } else if (match({TokenType::Const})) {
         init = varDeclaration(true, false);
     } else if (match({TokenType::FName})) {
-        init = functionDeclaration(false, false);
+        init = functionDeclaration(false, false, false);
     } else {
         auto expr = expression();
         consume(TokenType::Semicolon, "Expected ';' after loop initializer.");
@@ -409,6 +462,14 @@ ast::StmtPtr Parser::returnStatement() {
     }
     consume(TokenType::Semicolon, "Expected ';' after return value.");
     return std::make_unique<ReturnStmt>(token, std::move(value));
+}
+
+std::vector<ast::StmtPtr> Parser::parseSwitchBody() {
+    std::vector<ast::StmtPtr> body;
+    while (!check(TokenType::RightBrace) && !check(TokenType::Case) && !check(TokenType::Default) && !isAtEnd()) {
+        body.push_back(declaration(false, false));
+    }
+    return body;
 }
 
 ast::ExprPtr Parser::expression() {
@@ -492,6 +553,11 @@ ast::ExprPtr Parser::factor() {
 }
 
 ast::ExprPtr Parser::unary() {
+    if (match({TokenType::Await})) {
+        const Token op = previous();
+        auto right = unary();
+        return std::make_unique<AwaitExpr>(op, std::move(right));
+    }
     if (match({TokenType::Bang, TokenType::Minus})) {
         const Token op = previous();
         auto right = unary();

@@ -50,8 +50,16 @@ public:
                                 const std::vector<runtime::Value>& args,
                                 const std::optional<runtime::Value>& receiver);
 
+    runtime::Value callFunctionBody(const runtime::FunctionCallable& callable,
+                                    const std::vector<runtime::Value>& args,
+                                    const std::optional<runtime::Value>& receiver);
+
     runtime::Value callClass(const runtime::ClassCallable& callable,
                              const std::vector<runtime::Value>& args);
+
+    runtime::Value spawnAsyncFunction(const runtime::FunctionCallable& callable,
+                                      const std::vector<runtime::Value>& args,
+                                      const std::optional<runtime::Value>& receiver);
 
     [[nodiscard]] std::string formatFrame(const CallFrame& f) const;
     [[nodiscard]] const std::vector<CallFrame>& callStack() const { return callStack_; }

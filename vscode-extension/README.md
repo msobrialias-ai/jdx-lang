@@ -18,10 +18,10 @@ VS Code extension for the **JDX** language.
 JDX supports:
 
 - `let` and `const`
-- `fname` function declarations
+- `fname` and `async fname` function declarations
 - `class` declarations
 - `if / elif / else`
-- `while` and `for`
+- `while`, `for`, and `switch / case`
 - `try / catch`
 - `import` and `export`
 - literals: `true`, `false`, `null`, strings, numbers

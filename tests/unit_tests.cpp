@@ -131,6 +131,79 @@ int main() {
 
         {
             const std::string source = R"(
+                async fname add(a, b) {
+                    return a + b;
+                }
+
+                let task = add(2, 3);
+                let result = await task;
+            )";
+            auto env = jdx::runtime::makeGlobalEnvironment({});
+            moduleManager = jdx::modules::ModuleManager(".");
+            jdx::interpreter::Interpreter runInterpreter(env, moduleManager, {});
+            static_cast<void>(runScript("async_test.jdx", source, runInterpreter, env));
+            jdx::runtime::Value task;
+            jdx::runtime::Value result;
+            require(env->get("task", task) && task.isAsyncTask(), "Async task binding missing.");
+            require(env->get("result", result), "Async result binding missing.");
+            require(result.isInt() && result.asInt() == 5, "Async/await did not resolve the task.");
+        }
+
+        {
+            const std::string source = R"(
+                let value = 2;
+                let label = "unset";
+
+                switch (value) {
+                    case 1:
+                        label = "one";
+                        break;
+                    case 2:
+                        label = "two";
+                        break;
+                    default:
+                        label = "other";
+                }
+            )";
+            auto env = jdx::runtime::makeGlobalEnvironment({});
+            moduleManager = jdx::modules::ModuleManager(".");
+            jdx::interpreter::Interpreter runInterpreter(env, moduleManager, {});
+            static_cast<void>(runScript("switch_test.jdx", source, runInterpreter, env));
+            jdx::runtime::Value label;
+            require(env->get("label", label), "Switch label binding missing.");
+            require(label.isString() && label.asString() == "two", "Switch/case did not match the correct branch.");
+        }
+
+        {
+            const std::string source = R"(
+                fname inner() {
+                    return 1 / 0;
+                }
+
+                fname outer() {
+                    return inner();
+                }
+
+                let outcome = System.SafeExec(outer);
+            )";
+            auto env = jdx::runtime::makeGlobalEnvironment({});
+            moduleManager = jdx::modules::ModuleManager(".");
+            jdx::interpreter::Interpreter runInterpreter(env, moduleManager, {});
+            static_cast<void>(runScript("stacktrace_runtime.jdx", source, runInterpreter, env));
+            jdx::runtime::Value outcome;
+            require(env->get("outcome", outcome), "SafeExec outcome missing.");
+            require(outcome.isObject(), "SafeExec did not return an object.");
+            const auto obj = outcome.asObject();
+            require(obj->properties.at("ok").isBool() && !obj->properties.at("ok").asBool(), "SafeExec should report failure.");
+            require(obj->properties.at("error").isString(), "SafeExec error text missing.");
+            const std::string errorText = obj->properties.at("error").asString();
+            require(errorText.find("Stack Trace") != std::string::npos, "Runtime stack trace was not included.");
+            require(errorText.find("outer") != std::string::npos && errorText.find("inner") != std::string::npos,
+                    "Runtime stack trace did not include function frames.");
+        }
+
+        {
+            const std::string source = R"(
                 let captured = null;
 
                 try {

@@ -53,7 +53,7 @@ export default fname main() {
 
 JDX supports:
 
-- function calls: `fn(a, b)`
+- function calls: `fn(a, b)` and `await task`
 - property access: `object.name`
 - assignment: `name = value`
 - arithmetic: `+ - * / %`

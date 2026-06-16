@@ -1,9 +1,10 @@
 const vscode = require('vscode');
 
 const KEYWORDS = [
-  'let', 'const', 'fname', 'return', 'if', 'elif', 'else', 'while', 'for',
-  'break', 'continue', 'class', 'try', 'catch', 'throw', 'this', 'import',
-  'export', 'default', 'from', 'as', 'true', 'false', 'null'
+  'let', 'const', 'fname', 'async', 'await', 'return', 'if', 'elif', 'else',
+  'while', 'for', 'switch', 'case', 'break', 'continue', 'class', 'try',
+  'catch', 'throw', 'this', 'import', 'export', 'default', 'from', 'as',
+  'true', 'false', 'null'
 ];
 
 const BUILTIN_SYMBOLS = [
@@ -92,20 +93,24 @@ const KEYWORD_DOCS = new Map([
   ['let', 'Mutable binding declaration. `let name = value;`'],
   ['const', 'Immutable binding declaration. Constants require an initializer.'],
   ['fname', 'Function declaration keyword.'],
+  ['async', 'Mark a function declaration as asynchronous.'],
+  ['await', 'Suspend until an async task resolves.'],
   ['class', 'Class declaration keyword.'],
   ['if', 'Conditional branch.'],
   ['elif', 'Additional conditional branch.'],
   ['else', 'Fallback branch.'],
   ['while', 'Loop while the condition is truthy.'],
   ['for', 'C-style for loop.'],
-  ['break', 'Exit the nearest loop.'],
+  ['switch', 'Branch on a value.'],
+  ['case', 'Match a switch branch.'],
+  ['break', 'Exit the nearest loop or switch.'],
   ['continue', 'Skip to the next loop iteration.'],
   ['try', 'Start a try block.'],
   ['catch', 'Catch an exception.'],
   ['throw', 'Throw a runtime error value.'],
   ['import', 'Import a module or bindings.'],
   ['export', 'Export a declaration or binding list.'],
-  ['default', 'Default export modifier.'],
+  ['default', 'Default export modifier or switch fallback.'],
   ['from', 'Source clause in an import statement.'],
   ['as', 'Rename binding in import/export clauses.'],
   ['this', 'Current object receiver.'],
@@ -280,8 +285,10 @@ function buildKeywordCompletions(prefix) {
 function buildSnippetCompletions() {
   const snippets = [
     ['fname', 'fname ${1:name}(${2:params}) {\n\t${0}\n}', 'Function template'],
+    ['async', 'async fname ${1:name}(${2:params}) {\n\t${0}\n}', 'Async function template'],
     ['class', 'class ${1:Name} {\n\t${0}\n}', 'Class template'],
     ['if', 'if (${1:condition}) {\n\t${2}\n}', 'If template'],
+    ['switch', 'switch (${1:value}) {\n\tcase ${2:match}:\n\t\t${3}\n\tbreak;\n\tdefault:\n\t\t${0}\n}', 'Switch template'],
     ['for', 'for (${1:init}; ${2:condition}; ${3:increment}) {\n\t${0}\n}', 'For loop template'],
     ['while', 'while (${1:condition}) {\n\t${0}\n}', 'While loop template'],
     ['try', 'try {\n\t${1}\n} catch (${2:error}) {\n\t${0}\n}', 'Try/catch template'],
@@ -308,7 +315,7 @@ function detectMissingSemicolon(trimmed) {
   if (/^(?:\/\/|\/\*|\*|#)/.test(trimmed)) return false;
   if (/[{;}]$/.test(trimmed)) return false;
   if (containsUnbalancedParens(trimmed)) return false;
-  if (/^(?:if|elif|else|while|for|try|catch|class|fname)\b/.test(trimmed)) return false;
+  if (/^(?:if|elif|else|while|for|switch|case|try|catch|class|fname|async)\b/.test(trimmed)) return false;
   return /^(?:let|const|return|throw|import|export)\b/.test(trimmed) || /^[A-Za-z_][A-Za-z0-9_]*\s*[=.(]/.test(trimmed);
 }
 
@@ -449,7 +456,7 @@ function lintDocument(document) {
       ));
       continue;
     }
-    if (/^export\b/.test(trimmed) && !/(?:\{.*\}|let\b|const\b|fname\b|class\b|default\b)/.test(trimmed)) {
+    if (/^export\b/.test(trimmed) && !/(?:\{.*\}|let\b|const\b|fname\b|async\b|class\b|default\b)/.test(trimmed)) {
       diagnostics.push(new vscode.Diagnostic(
         lineRange(lineIndex, 0, line.length),
         'Export statements should export a declaration, a default expression, or an export list.',

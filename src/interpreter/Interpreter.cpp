@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <future>
 #include <optional>
 #include <sstream>
 #include <utility>
@@ -200,7 +201,8 @@ void Interpreter::execute(const Stmt* stmt,
                                                          fnStmt->body,
                                                          env,
                                                          currentFile,
-                                                         fnStmt->token.line);
+                                                         fnStmt->token.line,
+                                                         fnStmt->isAsync);
         if (!fnStmt->name.empty()) {
             env->define(fnStmt->name, fn, true, fnStmt->isExported);
             if (fnStmt->isDefaultExport) {
@@ -287,6 +289,32 @@ void Interpreter::execute(const Stmt* stmt,
                 static_cast<void>(evaluate(forStmt->increment.get(), currentFile, loopEnv));
             }
         }
+        return;
+    }
+
+    if (const auto* switchStmt = dynamic_cast<const SwitchStmt*>(stmt); switchStmt != nullptr) {
+        const runtime::Value condition = evaluate(switchStmt->condition.get(), currentFile, env);
+        std::size_t matchedCase = switchStmt->cases.size();
+        for (std::size_t i = 0U; i < switchStmt->cases.size(); ++i) {
+            const runtime::Value caseValue = evaluate(switchStmt->cases[i].condition.get(), currentFile, env);
+            if (condition.equals(caseValue)) {
+                matchedCase = i;
+                break;
+            }
+        }
+
+        try {
+            if (matchedCase < switchStmt->cases.size()) {
+                for (std::size_t i = matchedCase; i < switchStmt->cases.size(); ++i) {
+                    static_cast<void>(runStatements(switchStmt->cases[i].statements, currentFile, env, false));
+                }
+            } else if (switchStmt->hasDefault) {
+                static_cast<void>(runStatements(switchStmt->defaultStatements, currentFile, env, false));
+            }
+        } catch (const BreakSignal&) {
+            return;
+        }
+
         return;
     }
 
@@ -636,6 +664,14 @@ runtime::Value Interpreter::evaluate(const Expr* expr,
         return value;
     }
 
+    if (const auto* awaitExpr = dynamic_cast<const AwaitExpr*>(expr); awaitExpr != nullptr) {
+        const runtime::Value value = evaluate(awaitExpr->expression.get(), currentFile, env);
+        if (value.isAsyncTask()) {
+            return value.asAsyncTask()->future.get();
+        }
+        return value;
+    }
+
     utils::raiseRuntimeError(expr->token.filename,
                              expr->token.line,
                              expr->token.column,
@@ -676,6 +712,15 @@ runtime::Value Interpreter::callValue(const runtime::Value& callee,
 runtime::Value Interpreter::callFunction(const runtime::FunctionCallable& callable,
                                          const std::vector<runtime::Value>& args,
                                          const std::optional<runtime::Value>& receiver) {
+    if (callable.isAsync) {
+        return spawnAsyncFunction(callable, args, receiver);
+    }
+    return callFunctionBody(callable, args, receiver);
+}
+
+runtime::Value Interpreter::callFunctionBody(const runtime::FunctionCallable& callable,
+                                             const std::vector<runtime::Value>& args,
+                                             const std::optional<runtime::Value>& receiver) {
     if (args.size() != callable.params.size()) {
         utils::raiseRuntimeError(callable.declarationFilename,
                                  callable.declarationLine,
@@ -757,6 +802,18 @@ runtime::Value Interpreter::callClass(const runtime::ClassCallable& callable,
     }
 
     return instanceValue;
+}
+
+runtime::Value Interpreter::spawnAsyncFunction(const runtime::FunctionCallable& callable,
+                                               const std::vector<runtime::Value>& args,
+                                               const std::optional<runtime::Value>& receiver) {
+    auto future = std::async(std::launch::async,
+                             [this, callable, args, receiver]() mutable -> runtime::Value {
+                                 Interpreter worker(globals_, moduleManager_, args_);
+                                 return worker.callFunctionBody(callable, args, receiver);
+                             });
+    return runtime::makeAsyncTask(callable.functionName.empty() ? std::string{"<anonymous async>"} : callable.functionName,
+                                  future.share());
 }
 
 } // namespace jdx::interpreter

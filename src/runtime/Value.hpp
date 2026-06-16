@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -21,6 +22,7 @@ namespace jdx::runtime {
 
 struct Object;
 class Callable;
+struct AsyncTask;
 
 class Value {
 public:
@@ -32,7 +34,8 @@ public:
                                  std::string,
                                  std::shared_ptr<Array>,
                                  std::shared_ptr<Object>,
-                                 std::shared_ptr<Callable>>;
+                                 std::shared_ptr<Callable>,
+                                 std::shared_ptr<AsyncTask>>;
 
     Value() = default;
     Value(std::nullptr_t) : data_(std::monostate{}) {}
@@ -45,6 +48,7 @@ public:
     Value(std::shared_ptr<Array> v) : data_(std::move(v)) {}
     Value(std::shared_ptr<Object> v) : data_(std::move(v)) {}
     Value(std::shared_ptr<Callable> v) : data_(std::move(v)) {}
+    Value(std::shared_ptr<AsyncTask> v) : data_(std::move(v)) {}
 
     Value(const Value&) = default;
     Value(Value&&) noexcept = default;
@@ -64,6 +68,7 @@ public:
     [[nodiscard]] bool isArray() const;
     [[nodiscard]] bool isObject() const;
     [[nodiscard]] bool isCallable() const;
+    [[nodiscard]] bool isAsyncTask() const;
 
     [[nodiscard]] bool asBool() const;
     [[nodiscard]] std::int64_t asInt() const;
@@ -72,6 +77,7 @@ public:
     [[nodiscard]] std::shared_ptr<Array> asArray() const;
     [[nodiscard]] std::shared_ptr<Object> asObject() const;
     [[nodiscard]] std::shared_ptr<Callable> asCallable() const;
+    [[nodiscard]] std::shared_ptr<AsyncTask> asAsyncTask() const;
 
     [[nodiscard]] std::string typeName() const;
     [[nodiscard]] std::string toString() const;
@@ -118,19 +124,22 @@ struct FunctionCallable final : Callable {
     std::weak_ptr<interpreter::Environment> closure;
     std::string declarationFilename;
     std::size_t declarationLine {1};
+    bool isAsync {false};
 
     FunctionCallable(std::string name,
                      std::vector<std::string> parameters,
                      std::shared_ptr<ast::BlockStmt> block,
                      std::weak_ptr<interpreter::Environment> capture,
                      std::string filename,
-                     std::size_t line)
+                     std::size_t line,
+                     bool asyncFlag)
         : functionName(std::move(name)),
           params(std::move(parameters)),
           body(std::move(block)),
           closure(std::move(capture)),
           declarationFilename(std::move(filename)),
-          declarationLine(line) {}
+          declarationLine(line),
+          isAsync(asyncFlag) {}
 
     [[nodiscard]] std::string name() const override { return functionName; }
     [[nodiscard]] Value call(interpreter::Interpreter& interpreter,
@@ -169,6 +178,14 @@ struct ClassCallable final : Callable {
                              const std::vector<Value>& args) const override;
 };
 
+struct AsyncTask final {
+    std::string taskName;
+    std::shared_future<Value> future;
+
+    AsyncTask(std::string name, std::shared_future<Value> f)
+        : taskName(std::move(name)), future(std::move(f)) {}
+};
+
 Value makeNull();
 Value makeArray();
 Value makeObject(std::string tag = {});
@@ -178,11 +195,13 @@ Value makeFunctionCallable(std::string name,
                            std::shared_ptr<ast::BlockStmt> body,
                            std::weak_ptr<interpreter::Environment> closure,
                            std::string filename,
-                           std::size_t line);
+                           std::size_t line,
+                           bool isAsync = false);
 Value makeBoundCallable(std::shared_ptr<Callable> target, Value receiver);
 Value makeClassCallable(std::string name,
                         std::shared_ptr<interpreter::Environment> definition,
                         std::string filename,
                         std::size_t line);
+Value makeAsyncTask(std::string name, std::shared_future<Value> future);
 
 } // namespace jdx::runtime

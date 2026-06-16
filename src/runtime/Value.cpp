@@ -54,6 +54,10 @@ bool Value::isCallable() const {
     return std::holds_alternative<std::shared_ptr<Callable>>(data_);
 }
 
+bool Value::isAsyncTask() const {
+    return std::holds_alternative<std::shared_ptr<AsyncTask>>(data_);
+}
+
 bool Value::asBool() const {
     return std::get<bool>(data_);
 }
@@ -82,6 +86,10 @@ std::shared_ptr<Callable> Value::asCallable() const {
     return std::get<std::shared_ptr<Callable>>(data_);
 }
 
+std::shared_ptr<AsyncTask> Value::asAsyncTask() const {
+    return std::get<std::shared_ptr<AsyncTask>>(data_);
+}
+
 std::string Value::typeName() const {
     if (isNull()) {
         return "null";
@@ -103,6 +111,9 @@ std::string Value::typeName() const {
     }
     if (isCallable()) {
         return "callable";
+    }
+    if (isAsyncTask()) {
+        return "async";
     }
     return "unknown";
 }
@@ -170,6 +181,9 @@ std::string Value::toString() const {
     if (isCallable()) {
         return "<callable " + asCallable()->name() + ">";
     }
+    if (isAsyncTask()) {
+        return "<async " + asAsyncTask()->taskName + ">";
+    }
     return "<unknown>";
 }
 
@@ -193,6 +207,9 @@ bool Value::truthy() const {
         return !asArray()->empty();
     }
     if (isObject()) {
+        return true;
+    }
+    if (isCallable() || isAsyncTask()) {
         return true;
     }
     return true;
@@ -229,6 +246,9 @@ bool Value::equals(const Value& rhs) const {
     }
     if (isCallable()) {
         return asCallable() == rhs.asCallable();
+    }
+    if (isAsyncTask()) {
+        return asAsyncTask() == rhs.asAsyncTask();
     }
     return false;
 }
@@ -287,13 +307,15 @@ Value makeFunctionCallable(std::string name,
                            std::shared_ptr<ast::BlockStmt> body,
                            std::weak_ptr<interpreter::Environment> closure,
                            std::string filename,
-                           std::size_t line) {
+                           std::size_t line,
+                           bool isAsync) {
     auto ptr = std::make_shared<FunctionCallable>(std::move(name),
                                                   std::move(params),
                                                   std::move(body),
                                                   std::move(closure),
                                                   std::move(filename),
-                                                  line);
+                                                  line,
+                                                  isAsync);
     maybeTrack(ptr);
     return Value(ptr);
 }
@@ -309,6 +331,12 @@ Value makeClassCallable(std::string name,
                         std::string filename,
                         std::size_t line) {
     auto ptr = std::make_shared<ClassCallable>(std::move(name), std::move(definition), std::move(filename), line);
+    maybeTrack(ptr);
+    return Value(ptr);
+}
+
+Value makeAsyncTask(std::string name, std::shared_future<Value> future) {
+    auto ptr = std::make_shared<AsyncTask>(std::move(name), std::move(future));
     maybeTrack(ptr);
     return Value(ptr);
 }

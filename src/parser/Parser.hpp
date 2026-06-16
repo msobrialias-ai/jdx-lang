@@ -31,7 +31,7 @@ private:
     ast::StmtPtr exportDeclaration();
     ast::StmtPtr exportListDeclaration();
     ast::StmtPtr varDeclaration(bool isConst, bool exported);
-    ast::StmtPtr functionDeclaration(bool exported, bool defaultExport);
+    ast::StmtPtr functionDeclaration(bool exported, bool defaultExport, bool isAsync = false);
     ast::StmtPtr classDeclaration(bool exported, bool defaultExport);
     ast::StmtPtr statement();
     ast::StmtPtr ifStatement();
@@ -40,6 +40,7 @@ private:
     ast::StmtPtr returnStatement();
     ast::StmtPtr throwStatement();
     ast::StmtPtr tryCatchStatement();
+    ast::StmtPtr switchStatement();
 
     ast::ExprPtr expression();
     ast::ExprPtr assignment();
@@ -55,6 +56,7 @@ private:
     std::vector<ast::ExprPtr> arguments();
 
     std::vector<ast::ImportBinding> parseImportBindings();
+    std::vector<ast::StmtPtr> parseSwitchBody();
 
     std::vector<lexer::Token> tokens_;
     std::size_t current_ {0};

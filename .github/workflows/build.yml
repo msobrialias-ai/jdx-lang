@@ -19,7 +19,7 @@ jobs:
         include:
           - target: linux-x86_64
             mode: linux
-            packages: build-essential make binutils tar gzip coreutils findutils
+            packages: build-essential make binutils libasound2-dev tar gzip coreutils findutils
             cross_prefix: ""
             artifact_name: jdx-linux-x86_64
             archive_name: jdx-linux-x86_64
@@ -27,7 +27,7 @@ jobs:
 
           - target: linux-i686
             mode: linux
-            packages: build-essential make binutils g++-multilib tar gzip coreutils findutils
+            packages: build-essential make binutils libasound2-dev g++-multilib tar gzip coreutils findutils
             cross_prefix: ""
             artifact_name: jdx-linux-i686
             archive_name: jdx-linux-i686
@@ -35,7 +35,7 @@ jobs:
 
           - target: linux-arm64
             mode: linux
-            packages: build-essential make binutils g++-aarch64-linux-gnu tar gzip coreutils findutils
+            packages: build-essential make binutils libasound2-dev g++-aarch64-linux-gnu tar gzip coreutils findutils
             cross_prefix: aarch64-linux-gnu-
             artifact_name: jdx-linux-arm64
             archive_name: jdx-linux-arm64
@@ -43,7 +43,7 @@ jobs:
 
           - target: linux-armhf
             mode: linux
-            packages: build-essential make binutils g++-arm-linux-gnueabihf tar gzip coreutils findutils
+            packages: build-essential make binutils libasound2-dev g++-arm-linux-gnueabihf tar gzip coreutils findutils
             cross_prefix: arm-linux-gnueabihf-
             artifact_name: jdx-linux-armhf
             archive_name: jdx-linux-armhf
@@ -51,20 +51,52 @@ jobs:
 
           - target: linux-riscv64
             mode: linux
-            packages: build-essential make binutils g++-riscv64-linux-gnu tar gzip coreutils findutils
+            packages: build-essential make binutils libasound2-dev g++-riscv64-linux-gnu tar gzip coreutils findutils
             cross_prefix: riscv64-linux-gnu-
             artifact_name: jdx-linux-riscv64
             archive_name: jdx-linux-riscv64
             binary_path: build/linux-riscv64/release/jdx
-            
+
           - target: linux-powerpc64
             mode: linux
-            packages: build-essential make binutils g++-powerpc64-linux-gnu tar gzip coreutils findutils
+            packages: build-essential make binutils libasound2-dev g++-powerpc64-linux-gnu tar gzip coreutils findutils
             cross_prefix: powerpc64-linux-gnu-
             artifact_name: jdx-linux-powerpc64
             archive_name: jdx-linux-powerpc64
             binary_path: build/linux-powerpc64/release/jdx
-            
+
+          - target: android-arm
+            mode: android
+            abi: armeabi-v7a
+            android_api: 21
+            artifact_name: jdx-android-arm
+            archive_name: jdx-android-arm
+            binary_path: build/android-arm/release/jdx
+
+          - target: android-arm64
+            mode: android
+            abi: arm64-v8a
+            android_api: 21
+            artifact_name: jdx-android-arm64
+            archive_name: jdx-android-arm64
+            binary_path: build/android-arm64/release/jdx
+
+          - target: android-x86
+            mode: android
+            abi: x86
+            android_api: 21
+            artifact_name: jdx-android-x86
+            archive_name: jdx-android-x86
+            binary_path: build/android-x86/release/jdx
+
+          - target: android-x86_64
+            mode: android
+            abi: x86_64
+            android_api: 21
+            artifact_name: jdx-android-x86_64
+            archive_name: jdx-android-x86_64
+            binary_path: build/android-x86_64/release/jdx
+
     steps:
       - uses: actions/checkout@v4
 
@@ -74,8 +106,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ${{ matrix.packages }}
 
-      - name: Install WASM dependencies
-        if: matrix.mode == 'wasm'
+      - name: Install Android dependencies
+        if: matrix.mode == 'android'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -86,36 +118,64 @@ jobs:
             gzip \
             coreutils \
             findutils \
-            clang \
-            llvm \
-            lld \
-            wget
+            wget \
+            unzip \
+            python3 \
+            openjdk-17-jdk
 
-      - name: Install WASI SDK
-        if: matrix.mode == 'wasm'
+      - name: Set up Android NDK
+        if: matrix.mode == 'android'
         run: |
-          WASI_VERSION="33"
-          WASI_VERSION_FULL="33.0"
-          WASI_ARCH="x86_64"
-          WASI_OS="linux"
+          NDK_VERSION="27.2.12479018"
+          SDK_ROOT="$HOME/android-sdk"
+          CMDLINE_TOOLS_ZIP="commandlinetools-linux-11076708_latest.zip"
 
-          wget -O wasi-sdk.tar.gz \
-            "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_VERSION}/wasi-sdk-${WASI_VERSION_FULL}-${WASI_ARCH}-${WASI_OS}.tar.gz"
+          mkdir -p "$SDK_ROOT/cmdline-tools"
+          cd /tmp
+          wget -q "https://dl.google.com/android/repository/$CMDLINE_TOOLS_ZIP" -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d "$SDK_ROOT/cmdline-tools"
+          mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
 
-          sudo mkdir -p /opt
-          sudo tar -C /opt -xzf wasi-sdk.tar.gz
-          sudo mv "/opt/wasi-sdk-${WASI_VERSION_FULL}-${WASI_ARCH}-${WASI_OS}" /opt/wasi-sdk
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" \
+            "ndk;$NDK_VERSION"
+
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
 
       - name: Build release
         run: |
-          if [ "${{ matrix.mode }}" = "wasm" ]; then
+          if [ "${{ matrix.mode }}" = "android" ]; then
+            case "${{ matrix.abi }}" in
+              armeabi-v7a)
+                TRIPLE="armv7a-linux-androideabi"
+                ;;
+              arm64-v8a)
+                TRIPLE="aarch64-linux-android"
+                ;;
+              x86)
+                TRIPLE="i686-linux-android"
+                ;;
+              x86_64)
+                TRIPLE="x86_64-linux-android"
+                ;;
+              *)
+                echo "Unsupported Android ABI: ${{ matrix.abi }}"
+                exit 1
+                ;;
+            esac
+
+            TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+            API="${{ matrix.android_api }}"
+
             make -j"$(nproc)" build \
               TARGET=${{ matrix.target }} \
               BUILD=release \
-              CC=/opt/wasi-sdk/bin/clang \
-              CXX=/opt/wasi-sdk/bin/clang++ \
-              AR=/opt/wasi-sdk/bin/llvm-ar \
-              STRIP=/opt/wasi-sdk/bin/llvm-strip
+              CC="$TOOLCHAIN/${TRIPLE}${API}-clang" \
+              CXX="$TOOLCHAIN/${TRIPLE}${API}-clang++" \
+              AR="$TOOLCHAIN/llvm-ar" \
+              STRIP="$TOOLCHAIN/llvm-strip"
           else
             make -j"$(nproc)" build \
               TARGET=${{ matrix.target }} \
@@ -131,18 +191,10 @@ jobs:
       - name: Package binary
         run: |
           mkdir -p release
-
-          if [ "${{ matrix.mode }}" = "linux" ]; then
-            tar -czf release/${{ matrix.archive_name }}.tar.gz \
-              -C "$(dirname "${{ matrix.binary_path }}")" \
-              "$(basename "${{ matrix.binary_path }}")"
-          else
-            tar -czf release/${{ matrix.archive_name }}.tar.gz \
-              -C "$(dirname "${{ matrix.binary_path }}")" \
-              "$(basename "${{ matrix.binary_path }}")"
-          fi
-
-          sha256sum release/${{ matrix.archive_name }}.tar.gz > release/${{ matrix.archive_name }}.tar.gz.sha256
+          tar -czf "release/${{ matrix.archive_name }}.tar.gz" \
+            -C "$(dirname "${{ matrix.binary_path }}")" \
+            "$(basename "${{ matrix.binary_path }}")"
+          sha256sum "release/${{ matrix.archive_name }}.tar.gz" > "release/${{ matrix.archive_name }}.tar.gz.sha256"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
